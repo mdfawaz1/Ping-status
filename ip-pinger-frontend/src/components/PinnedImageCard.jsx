@@ -43,7 +43,9 @@ export default function PinnedImageCard({ image, pins, onEdit }) {
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'center',
-        height: '55rem',
+        height: '48rem',
+        paddingTop:'50px',
+        paddingBottom:'50px',
         backgroundColor: '#fff',
         boxShadow: 3,
       }}
