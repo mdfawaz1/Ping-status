@@ -82,6 +82,7 @@ const PingUI = () => {
         params: { ips: ips.join(',') },
       });
       const results = response.data;
+      console.log("ress--->",results);
       setPingResults(results);
 
       for (const [ip, status] of Object.entries(results)) {
@@ -95,7 +96,7 @@ const PingUI = () => {
     } catch (error) {
       console.error('Error pinging IPs:', error);
     }
-
+    console.log("--->active",active);
     setActiveCount(active);
     setInactiveCount(inactive);
     setInactiveIps(Object.keys(inactiveIpList));
