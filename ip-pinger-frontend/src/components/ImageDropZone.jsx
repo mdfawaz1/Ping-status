@@ -4,7 +4,6 @@ import {
 } from '@mui/material';
 import { styled } from '@mui/system';
 import axios from 'axios';
-import devicesListData from '../data/devicesList.json'; // Initial devices list without status
 import PinnedImageCard from './PinnedImageCard';
 
 const DropZone = styled(Box)(({ theme, isDragging }) => ({
