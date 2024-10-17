@@ -78,7 +78,8 @@ const PingUI = () => {
     let inactiveIpList = {};
 
     try {
-      const response = await axios.get(`http://127.0.0.1:5000/ping`, {
+      // const response = await axios.get(`http://127.0.0.1:5000/ping`, 
+      const response = await axios.get(`http://localhost:8080/ping`, {
         params: { ips: ips.join(',') },
       });
       const results = response.data;
