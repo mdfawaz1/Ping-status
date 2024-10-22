@@ -44,7 +44,9 @@ func pingIP(ip string) PingResult {
 	log.Printf("Ping output for IP %s: %s", ip, output)
 
 	// Regardless of exit status, check if at least one packet was received
-	if strings.Contains(output, "1 packets received") || strings.Contains(output, "1 received") {
+	if strings.Contains(output, "1 packets received") ||
+		strings.Contains(output, "1 received") ||
+		strings.Contains(output, "Received = 1") {
 		return PingResult{IP: ip, Status: "active"}
 	}
 
