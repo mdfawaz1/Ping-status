@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import PersonIcon from '@mui/icons-material/Person';
+import { useNavigate } from 'react-router-dom'; 
 import {
+  Menu,
   Box,
+  CardMedia,
   Typography,
   TextField,
   Button,
@@ -158,6 +162,7 @@ const PingUI = () => {
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState('success');
   const [pingResults, setPingResults] = useState({});
+  
 
   const [openCategoryDialog, setOpenCategoryDialog] = useState(false);
   const [newCategory, setNewCategory] = useState('');
@@ -292,7 +297,76 @@ const PingUI = () => {
     });
     return stats;
   };
+  const [anchorEl, setAnchorEl] = useState(null);
 
+
+
+  const navigate = useNavigate();
+
+  const handleProfileClick = (event) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleClose = () => {
+    setAnchorEl(null);
+  };
+
+  const handleLogout = async () => {
+    try {
+      const response = await fetch('http://localhost:22000/auth/logout', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`, // Send the token in the headers
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to log out');
+      }
+
+      // Clear user data from local storage
+      localStorage.removeItem('user');
+      localStorage.removeItem('token'); // Clear the token to end session
+// Assuming you have user state in your component or context
+
+      // Redirect to login screen
+      navigate('/login', { replace: true }); 
+      window.location.reload();
+    } catch (error) {
+      console.error('Error during logout:', error);
+      // Optionally, display an error message to the user
+    }
+  };
+
+  const handleProfileUpdate = () => {
+    setUserName(newName); // Update the displayed name
+    if (newLogo) {
+      const logoURL = URL.createObjectURL(newLogo); // Create URL for the image
+      setUserLogo(logoURL); // Update the displayed logo
+    }
+  };
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const response = await fetch('/api/user', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`, // Send token for authentication
+          },
+        });
+        const data = await response.json();
+        if (response.ok) {
+          setUserName(data.name);
+          setUserLogo(data.logo);
+        } else {
+          console.error('Error fetching user data:', data.message);
+        }
+      } catch (error) {
+        console.error('Error fetching user data:', error);
+      }
+    };
+
+    fetchUserData();
+  }, []);
   const pingIps = async () => {
     let active = 0;
     let inactive = 0;
@@ -335,6 +409,52 @@ const PingUI = () => {
     setInactiveCount(inactive);
     setInactiveIps(inactiveIpList);
   };
+  const [editMode, setEditMode] = useState(false);
+  const [userName, setUserName] = useState(localStorage.getItem('userName') || 'User Name');
+  const [userLogo, setUserLogo] = useState(localStorage.getItem('userLogo') || 'https://via.placeholder.com/100');
+  const [newName, setNewName] = useState(userName); // State to update the name
+  const [newLogo, setNewLogo] = useState(null);
+  
+  useEffect(() => {
+    // If there is a user name or logo in localStorage, set it when the component mounts
+    const storedName = localStorage.getItem('userName');
+    const storedLogo = localStorage.getItem('userLogo');
+    if (storedName) {
+      setUserName(storedName);
+      setNewName(storedName);
+    }
+    if (storedLogo) {
+      setUserLogo(storedLogo);
+    }
+  }, []);
+  
+  const handleConfirmUpdate = async () => {
+    // Update the user profile logic here (e.g., set userName and userLogo)
+    setUserName(newName);
+  
+    if (newLogo) {
+      // Convert the image file to base64
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64Image = reader.result; // Get the base64 string
+  
+        setUserLogo(base64Image); // Set the logo in state
+        localStorage.setItem('userLogo', base64Image); // Save the base64 logo in localStorage
+      };
+  
+      reader.readAsDataURL(newLogo); // Read file as base64
+    }
+  
+    // Save the new name in localStorage
+    localStorage.setItem('userName', newName);
+  
+    setEditMode(false); // Switch back to view mode
+  };
+  
+  const handleCancelUpdate = () => {
+    setEditMode(false); // Cancel update and revert to view mode
+  };
+  
 
   useEffect(() => {
     if (ips.length > 0) {
@@ -383,37 +503,150 @@ const PingUI = () => {
       <CssBaseline />
       <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
       <AppBar position="static" color="primary" elevation={0}>
-        <Toolbar>
-          <CloudIcon sx={{ mr: 2 }} />
-          <Typography variant="h4" component="div" sx={{ flexGrow: 1 }}>
-            IP Status Monitor
-          </Typography>
-          <Button
-            color="inherit"
-            component={Link} // This will now act as a Link
-            to="/home"           // Directs to the main page (Ping UI)
-            size="large"
-          >
-            Ping UI
+      <Toolbar>
+        <CloudIcon sx={{ mr: 2 }} />
+        <Typography variant="h4" component="div" sx={{ flexGrow: 1 }}>
+          IP Status Monitor
+        </Typography>
+        <Button
+          color="inherit"
+          component={Link}
+          to="/home"
+          size="large"
+          sx={{ mx: 2 }} // Adding horizontal margin for spacing
+        >
+          Ping UI
+        </Button>
+        <Button
+          color="inherit"
+          component={Link}
+          to="/image-dropzone"
+          size="large"
+          sx={{ mx: 2 }} // Adding horizontal margin for spacing
+        >
+          Image Drop Zone
+        </Button>
+        <Button
+          color="inherit"
+          startIcon={<CategoryIcon />}
+          onClick={() => setOpenCategoryDialog(true)} // Keep the original functionality
+          size="large"
+          sx={{ mx: 2 }} // Adding horizontal margin for spacing
+        >
+          Manage Categories
+        </Button>
+        <PersonIcon 
+          onClick={handleProfileClick}
+          sx={{ cursor: 'pointer', color: 'white', mx: 2 }} // Add spacing and cursor pointer
+          fontSize="large" // Adjust the icon size
+        />
+      </Toolbar>
+
+      <Menu
+        anchorEl={anchorEl}
+        open={Boolean(anchorEl)}
+        onClose={handleClose}
+      >
+<Card sx={{ minWidth: 250, maxWidth: 300, padding: 2 }}>
+  {/* User Logo (fallback if no logo is uploaded) */}
+  <CardMedia
+    component="img"
+    alt="User Logo"
+    height="80"
+    image={userLogo || 'https://via.placeholder.com/100'}
+    sx={{ 
+      width: 80, 
+      height: 80, 
+      borderRadius: '50%', 
+      margin: '0 auto', 
+      objectFit: 'cover' 
+    }}
+  />
+  
+  <CardContent>
+    {/* Display User Name */}
+    <Typography variant="h6" align="center">
+      {userName || 'User Name'}
+    </Typography>
+
+    {/* If editMode is true, show input fields for updating the profile */}
+    {editMode ? (
+      <>
+        {/* Input to update the user name */}
+        <TextField
+          label="Update Name"
+          variant="outlined"
+          fullWidth
+          margin="normal"
+          value={newName}
+          onChange={(e) => setNewName(e.target.value)} // Update new name state
+        />
+
+        {/* Input to upload a new logo */}
+        <input
+          type="file"
+          accept="image/*"
+          onChange={(e) => setNewLogo(e.target.files[0])} // Update new logo state
+          style={{ margin: '10px 0' }} // Space between input fields
+        />
+
+        {/* Confirm and Cancel buttons */}
+        <Box display="flex" justifyContent="space-between" mt={2}>
+          <Button onClick={handleConfirmUpdate} color="primary" size="small">
+            Confirm
           </Button>
-          <Button
-            color="inherit"
-            component={Link}  // Link to another route
-            to="/image-dropzone" // Directs to ImageDropZone page
-            size="large"
-          >
-            Image Drop Zone
+          <Button onClick={handleCancelUpdate} color="secondary" size="small">
+            Cancel
           </Button>
-          <Button
-            color="inherit"
-            startIcon={<CategoryIcon />}
-            onClick={() => setOpenCategoryDialog(true)}
-            size="large"
-          >
-            Manage Categories
-          </Button>
-        </Toolbar>
-      </AppBar>
+        </Box>
+      </>
+    ) : (
+      /* If not in edit mode, show the Update Profile and Logout buttons */
+      <Box display="flex" justifyContent="space-between" mt={2}>
+ <Button
+    onClick={() => setEditMode(true)}
+    size="small"
+    sx={{
+      backgroundColor: '#E6E6FA', // Light purple
+      color: '#4B0082', // Darker purple for text
+      borderRadius: '12px', // Add border radius
+      padding: '8px 16px', // Add padding for better spacing
+      '&:hover': {
+        backgroundColor: '#D8BFD8', // Lighter purple on hover
+        color: '#4B0082', // Keep text color on hover
+      },
+      transition: 'background-color 0.3s ease', // Smooth transition
+      marginRight: '8px', // Add spacing between buttons
+    }}
+  >
+    Update Profile
+  </Button>
+  
+  {/* Logout button */}
+  <Button
+    onClick={handleLogout}
+    size="small"
+    sx={{
+      backgroundColor: '#FF0000', // Dark red
+      color: '#FFFFFF', // White text
+      borderRadius: '12px', // Add border radius
+      padding: '8px 16px', // Add padding for better spacing
+      '&:hover': {
+        backgroundColor: '#8B0000', // Lighter red on hover
+        color: '#FFFFFF', // Keep text color on hover
+      },
+      transition: 'background-color 0.3s ease', // Smooth transition
+    }}
+  >
+    Logout
+  </Button>
+      </Box>
+    )}
+  </CardContent>
+</Card>
+
+      </Menu>
+    </AppBar>
         <Container maxWidth={false} sx={{ mt: 4, mb: 4, flexGrow: 1 }}>
           <Grid container spacing={3}>
             <Grid item xs={12}>

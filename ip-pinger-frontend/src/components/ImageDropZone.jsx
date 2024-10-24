@@ -46,68 +46,66 @@ export default function ImageDropZone() {
   const [viewingStage, setViewingStage] = useState(false);
 // Load stored data from localStorage when the component mounts
 useEffect(() => {
-    loadStoredData();
-  }, []);
+  loadStoredData();
+}, []);
 
-  const loadStoredData = () => {
-    const storedImage = localStorage.getItem('storedImage');
-    const storedPins = localStorage.getItem('pins');
-    // const storedDevices = localStorage.getItem('devices');
+const loadStoredData = () => {
+  const storedImage = localStorage.getItem('storedImage');
+  const storedPins = localStorage.getItem('pins');
+  const storedIps = localStorage.getItem('ips');
 
-    if (storedImage) setImage(storedImage);
-    if (storedPins) setPins(JSON.parse(storedPins));
-    // if (storedDevices) setDevicesList(JSON.parse(storedDevices));
-  };
-  useEffect(() => {
-    // Load stored IPs and assign deviceId to each
-    const storedIps = localStorage.getItem('ips');
-    if (storedIps) {
-      const parsedIps = JSON.parse(storedIps);
-      const devicesWithId = parsedIps.map((ip, index) => ({
-        id: index + 1, // Unique deviceId
-        ipAddress: ip,
-        status: 'unknown',
-      }));
-      setDevicesList(devicesWithId);
-    }
-  }, []); // Run this once on mount
+  if (storedImage) setImage(storedImage);
+  if (storedPins) setPins(JSON.parse(storedPins));
   
-  useEffect(() => {
-    const pingIps = async () => {
-      let activeCount = 0;
-      let inactiveCount = 0;
-  
-      try {
-        const response = await axios.get(`http://127.0.0.1:8080/ping`, {
-          params: { ips: devicesList.map(device => device.ipAddress).join(',') },
-        });
-  
-        const results = response.data;
-  
-        const updatedDevicesList = devicesList.map(device => {
-          const status = results[device.ipAddress] || 'inactive';
-          return { ...device, status };
-        });
-  
-        setDevicesList(updatedDevicesList);
-  
-        activeCount = updatedDevicesList.filter(device => device.status === 'active').length;
-        inactiveCount = updatedDevicesList.length - activeCount;
-  
-        setActiveCount(activeCount);
-        setInactiveCount(inactiveCount);
-        setInactiveIps(updatedDevicesList.filter(device => device.status === 'inactive').map(device => device.ipAddress));
-      } catch (error) {
-        console.error('Error pinging IPs:', error);
-      }
-    };
-  
-    pingIps(); // Call once when the component mounts
-  
-    const intervalId = setInterval(pingIps, 15000); // Set interval to call pingIps every 15 seconds
-  
-    return () => clearInterval(intervalId); // Cleanup on unmount
-  }, []); // Remove devicesList dependency
+  if (storedIps) {
+    const parsedIps = JSON.parse(storedIps);
+    const devicesWithId = parsedIps.map((ip, index) => ({
+      id: index + 1,
+      ipAddress: ip,
+      status: 'unknown',
+    }));
+    setDevicesList(devicesWithId);
+    pingIps(devicesWithId); // Call pingIps immediately after setting devices
+  }
+};
+
+const pingIps = async (devices) => {
+  let activeCount = 0;
+  let inactiveCount = 0;
+
+  try {
+    const response = await axios.get(`http://127.0.0.1:8080/ping`, {
+      params: { ips: devices.map(device => device.ipAddress).join(',') },
+    });
+
+    const results = response.data;
+
+    const updatedDevicesList = devices.map(device => {
+      const status = results[device.ipAddress] || 'inactive';
+      return { ...device, status };
+    });
+
+    setDevicesList(updatedDevicesList);
+
+    activeCount = updatedDevicesList.filter(device => device.status === 'active').length;
+    inactiveCount = updatedDevicesList.length - activeCount;
+
+    setActiveCount(activeCount);
+    setInactiveCount(inactiveCount);
+    setInactiveIps(updatedDevicesList.filter(device => device.status === 'inactive').map(device => device.ipAddress));
+  } catch (error) {
+    console.error('Error pinging IPs:', error);
+  }
+};
+
+useEffect(() => {
+  const intervalId = setInterval(() => {
+    pingIps(devicesList); // Use the latest devicesList
+  }, 15000); // Set interval to call pingIps every 15 seconds
+
+  return () => clearInterval(intervalId); // Cleanup on unmount
+}, [devicesList]); // Dependencies include devicesList
+
   // Convert file to base64
   const fileToBase64 = (file) => {
     return new Promise((resolve, reject) => {

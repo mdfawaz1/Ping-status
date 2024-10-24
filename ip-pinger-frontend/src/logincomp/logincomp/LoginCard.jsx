@@ -3,11 +3,16 @@ import { Card, CardContent, TextField, Button, Box } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from '../../context/AuthContext';
 import './login.css';
+import LoginLogo from './LoginLogo.jsx';
 
 export default function LoginCard() {
   const navigate = useNavigate();
   const { setIsLoggedIn } = useAuth();
   const [username, setUsername] = useState("");
+  const [isFocused, setIsFocused] = useState(false);
+const [charCount, setCharCount] = useState(0);
+const [isPasswordFocused, setIsPasswordFocused] = useState(false);
+const [isPasswordUnFocused, setIsPasswordUnFocused] = useState(false);
   const [password, setPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [isRegistering, setIsRegistering] = useState(false);
@@ -181,6 +186,20 @@ export default function LoginCard() {
         p: 3,
       }}
     >
+            <LoginLogo
+        isFocused={isFocused}
+        charCount={charCount}
+        isPasswordFocused={isPasswordFocused}
+        isPasswordUnFocused={isPasswordUnFocused}
+        style={{
+          position: "absolute",
+          top: "-6.8rem", // Adjust based on logo size and desired overlap
+          left: "50%",
+          transform: "translateX(-50%)",
+          maxWidth: "32rem",
+          zIndex: 2,
+        }}
+      />
       <Card
         sx={{
           position: "relative",
