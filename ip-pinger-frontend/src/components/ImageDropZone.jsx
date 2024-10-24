@@ -1,10 +1,16 @@
-import React, { useState, useEffect } from 'react'; 
+import React, { useState, useEffect } from 'react';
 import {
-  Box, Button, Typography, TextField, Dialog, DialogActions, DialogContent, DialogTitle, List, ListItem, ListItemText, Checkbox
+  Box, Button, Typography, TextField, Dialog, DialogActions, DialogContent, 
+  DialogTitle, List, ListItem, ListItemText, Checkbox, AppBar, Toolbar // Import AppBar and Toolbar
 } from '@mui/material';
 import { styled } from '@mui/system';
+import { Link } from 'react-router-dom'; 
 import axios from 'axios';
 import PinnedImageCard from './PinnedImageCard';
+
+import CloudIcon from '@mui/icons-material/Cloud'; // Import CloudIcon
+import CategoryIcon from '@mui/icons-material/Category'; // Import CategoryIcon
+
 
 const DropZone = styled(Box)(({ theme, isDragging }) => ({
   border: '2px dashed #ccc',
@@ -40,105 +46,114 @@ export default function ImageDropZone() {
   const [viewingStage, setViewingStage] = useState(false);
 // Load stored data from localStorage when the component mounts
 useEffect(() => {
-  const storedImage = localStorage.getItem('image');
-  const storedPins = localStorage.getItem('pins');
-  const storedDevices = localStorage.getItem('devices');
+    loadStoredData();
+  }, []);
 
-  if (storedImage) setImage(storedImage);
-  if (storedPins) setPins(JSON.parse(storedPins));
-  if (storedDevices) setDevicesList(JSON.parse(storedDevices));
+  const loadStoredData = () => {
+    const storedImage = localStorage.getItem('storedImage');
+    const storedPins = localStorage.getItem('pins');
+    // const storedDevices = localStorage.getItem('devices');
 
-  // Initial ping when component mounts
-  pingIps();
-}, []);
-
-// Function to store data to localStorage whenever it changes
-useEffect(() => {
-  if (image) localStorage.setItem('image', image);
-  if (pins.length > 0) localStorage.setItem('pins', JSON.stringify(pins));
-  if (devicesList.length > 0) localStorage.setItem('devices', JSON.stringify(devicesList));
-}, [image, pins, devicesList]);
-
-// Load stored IPs and assign deviceId to each
-useEffect(() => {
-  const storedIps = localStorage.getItem('ips');
-  if (storedIps) {
-    const parsedIps = JSON.parse(storedIps);
-    const devicesWithId = parsedIps.map((ip, index) => ({
-      id: index + 1, // Unique deviceId
-      ipAddress: ip,
-      status: 'unknown',
-    }));
-    setDevicesList(devicesWithId);
-  }
-  pingIps(); // Call pingIps once right after setting up the device list
-}, []);
-
-// Function to ping the IPs
-const pingIps = async () => {
-  let activeCount = 0;
-  let inactiveCount = 0;
-
-  try {
-    const response = await axios.get(`http://localhost:8080/ping`, {
-      params: { ips: devicesList.map(device => device.ipAddress).join(',') },
+    if (storedImage) setImage(storedImage);
+    if (storedPins) setPins(JSON.parse(storedPins));
+    // if (storedDevices) setDevicesList(JSON.parse(storedDevices));
+  };
+  useEffect(() => {
+    // Load stored IPs and assign deviceId to each
+    const storedIps = localStorage.getItem('ips');
+    if (storedIps) {
+      const parsedIps = JSON.parse(storedIps);
+      const devicesWithId = parsedIps.map((ip, index) => ({
+        id: index + 1, // Unique deviceId
+        ipAddress: ip,
+        status: 'unknown',
+      }));
+      setDevicesList(devicesWithId);
+    }
+  }, []); // Run this once on mount
+  
+  useEffect(() => {
+    const pingIps = async () => {
+      let activeCount = 0;
+      let inactiveCount = 0;
+  
+      try {
+        const response = await axios.get(`http://127.0.0.1:8080/ping`, {
+          params: { ips: devicesList.map(device => device.ipAddress).join(',') },
+        });
+  
+        const results = response.data;
+  
+        const updatedDevicesList = devicesList.map(device => {
+          const status = results[device.ipAddress] || 'inactive';
+          return { ...device, status };
+        });
+  
+        setDevicesList(updatedDevicesList);
+  
+        activeCount = updatedDevicesList.filter(device => device.status === 'active').length;
+        inactiveCount = updatedDevicesList.length - activeCount;
+  
+        setActiveCount(activeCount);
+        setInactiveCount(inactiveCount);
+        setInactiveIps(updatedDevicesList.filter(device => device.status === 'inactive').map(device => device.ipAddress));
+      } catch (error) {
+        console.error('Error pinging IPs:', error);
+      }
+    };
+  
+    pingIps(); // Call once when the component mounts
+  
+    const intervalId = setInterval(pingIps, 15000); // Set interval to call pingIps every 15 seconds
+  
+    return () => clearInterval(intervalId); // Cleanup on unmount
+  }, []); // Remove devicesList dependency
+  // Convert file to base64
+  const fileToBase64 = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = (error) => reject(error);
     });
+  };
 
-    console.log("Ping results: ", response.data);
-
-    const results = response.data;
-
-    // Update the devices list with statuses
-    const updatedDevicesList = devicesList.map(device => {
-      const status = results[device.ipAddress] || 'inactive'; // Default to inactive if not found
-      return { ...device, status }; // Update only the status
-    });
-
-    setDevicesList(updatedDevicesList); // Update the state with new devices list
-
-    // Count active and inactive devices
-    activeCount = updatedDevicesList.filter(device => device.status === 'active').length;
-    inactiveCount = updatedDevicesList.length - activeCount;
-
-    setActiveCount(activeCount);
-    setInactiveCount(inactiveCount);
-    setInactiveIps(updatedDevicesList.filter(device => device.status === 'inactive').map(device => device.ipAddress));
-
-  } catch (error) {
-    console.error('Error pinging IPs:', error);
-  }
-};
-
-// Set up pinging every 15 seconds
-useEffect(() => {
-  const intervalId = setInterval(pingIps, 15000); // Set interval to call pingIps every 15 seconds
-
-  return () => clearInterval(intervalId); // Cleanup the interval when the component unmounts
-}, [devicesList]); // Add devicesList as a dependency if it changes
-
-  const handleDrop = (e) => {
+  const handleDrop = async (e) => {
     e.preventDefault();
     const file = e.dataTransfer.files[0];
     if (file && file.type.startsWith('image/')) {
-      setImage(URL.createObjectURL(file));
+      try {
+        const base64Image = await fileToBase64(file);
+        setImage(base64Image);
+        localStorage.setItem('storedImage', base64Image);
+      } catch (error) {
+        console.error('Error converting image:', error);
+      }
     }
     setIsDragging(false);
   };
+  const handleClearImage = () => {
+    setImage(null); // Clear the image state
+    localStorage.removeItem('storedImage'); // Clear from localStorage
+};
 
-  const handleDragOver = (e) => {
-    e.preventDefault();
-    setIsDragging(true);
-  };
 
-  const handleDragLeave = () => {
-    setIsDragging(false);
-  };
-
-  const handleImageChange = (e) => {
+  const handleImageChange = async (e) => {
     const file = e.target.files[0];
     if (file && file.type.startsWith('image/')) {
-      setImage(URL.createObjectURL(file));
+      try {
+        const base64Image = await fileToBase64(file);
+        setImage(base64Image);
+        localStorage.setItem('storedImage', base64Image);
+      } catch (error) {
+        console.error('Error converting image:', error);
+      }
     }
+  };
+
+  const handleClearPins = () => {
+    setPins([]);
+    localStorage.removeItem('pins');
   };
 
   const handleImageClick = (e) => {
@@ -153,6 +168,24 @@ useEffect(() => {
     setIsAddingPin(true);
   };
 
+  const handlePinSave = () => {
+    const updatedPins = [...pins, { ...currentPin, devices: selectedDevices }];
+    setPins(updatedPins);
+    localStorage.setItem('pins', JSON.stringify(updatedPins));
+    setDialogOpen(false);
+    setStep(1);
+    setIsAddingPin(false);
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = () => {
+    setIsDragging(false);
+  };
+
   const handleDialogClose = () => {
     setDialogOpen(false);
     setStep(1);
@@ -163,22 +196,9 @@ useEffect(() => {
     setStep(2);
   };
 
-  // Save the pin and store the selected devices with the pin
-  const handlePinSave = () => {
-    const updatedPins = [...pins, { ...currentPin, devices: selectedDevices }];
-    setPins(updatedPins);
-
-    // Store the updated pins in localStorage
-    localStorage.setItem('pins', JSON.stringify(updatedPins));
-
-    setDialogOpen(false);
-    setStep(1);
-    setIsAddingPin(false);
-  };
-
   const handleDeviceToggle = (deviceId) => {
     const currentIndex = selectedDevices.indexOf(deviceId);
-    let newSelectedDevices = [...selectedDevices];
+    const newSelectedDevices = [...selectedDevices];
 
     if (currentIndex === -1) {
       newSelectedDevices.push(deviceId);
@@ -223,6 +243,30 @@ useEffect(() => {
 
   return (
     <Box>
+            <AppBar position="static" color="primary" elevation={0}>
+        <Toolbar>
+          <CloudIcon sx={{ mr: 2 }} />
+          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+            Image Drop Zone
+          </Typography>
+          <Button
+            color="inherit"
+            component={Link}
+            to="/home"
+            size="large"
+          >
+            Ping UI
+          </Button>
+          <Button
+            color="inherit"
+            startIcon={<CategoryIcon />}
+            onClick={() => console.log('Open categories')}
+            size="large"
+          >
+            Manage Categories
+          </Button>
+        </Toolbar>
+      </AppBar>
       <DropZone
         isDragging={isDragging}
         onDrop={handleDrop}
@@ -272,9 +316,22 @@ useEffect(() => {
           variant="contained"
           color="secondary"
           onClick={handleConfirm}
+          disabled={!image || pins.length === 0}
         >
           Confirm
         </Button>
+        <Button 
+          variant="contained" 
+          onClick={handleClearPins} 
+          color="error"
+          disabled={pins.length === 0}
+        >
+          Clear Pins
+        </Button>
+        <Button variant="contained" onClick={handleClearImage} color="error">
+    Clear Image
+</Button>
+
       </Box>
 
       <Dialog open={dialogOpen} onClose={handleDialogClose}>
@@ -306,7 +363,7 @@ useEffect(() => {
                 {devicesList.map((device) => (
                   <ListItem key={device.id} button onClick={() => handleDeviceToggle(device.id)}>
                     <Checkbox
-                      checked={selectedDevices.includes(device.id)} // Check if the deviceId is selected
+                      checked={selectedDevices.includes(device.id)}
                       tabIndex={-1}
                     />
                     <ListItemText primary={`${device.ipAddress} (${device.status})`} />
