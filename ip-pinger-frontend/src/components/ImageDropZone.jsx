@@ -1,16 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import {
   Box, Button, Typography, TextField, Dialog, DialogActions, DialogContent, 
-  DialogTitle, List, ListItem, ListItemText, Checkbox, AppBar, Toolbar // Import AppBar and Toolbar
+  DialogTitle, List, ListItem, ListItemText, Checkbox, AppBar, Toolbar,
+  Card, CardContent, IconButton
 } from '@mui/material';
 import { styled } from '@mui/system';
-import { Link } from 'react-router-dom'; 
+import { Link } from 'react-router-dom';
 import axios from 'axios';
+import CloudIcon from '@mui/icons-material/Cloud';
+import CategoryIcon from '@mui/icons-material/Category';
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import AddIcon from '@mui/icons-material/Add';
 import PinnedImageCard from './PinnedImageCard';
-
-import CloudIcon from '@mui/icons-material/Cloud'; // Import CloudIcon
-import CategoryIcon from '@mui/icons-material/Category'; // Import CategoryIcon
-
 
 const DropZone = styled(Box)(({ theme, isDragging }) => ({
   border: '2px dashed #ccc',
@@ -31,7 +33,8 @@ const Pin = styled(Box)(({ theme }) => ({
 }));
 
 export default function ImageDropZone() {
-  const [image, setImage] = useState(null);
+  const [images, setImages] = useState([]);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [pins, setPins] = useState([]);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -44,69 +47,65 @@ export default function ImageDropZone() {
   const [inactiveIps, setInactiveIps] = useState([]);
   const [isAddingPin, setIsAddingPin] = useState(false);
   const [viewingStage, setViewingStage] = useState(false);
-// Load stored data from localStorage when the component mounts
-useEffect(() => {
-  loadStoredData();
-}, []);
 
-const loadStoredData = () => {
-  const storedImage = localStorage.getItem('storedImage');
-  const storedPins = localStorage.getItem('pins');
-  const storedIps = localStorage.getItem('ips');
+  useEffect(() => {
+    loadStoredData();
+  }, []);
 
-  if (storedImage) setImage(storedImage);
-  if (storedPins) setPins(JSON.parse(storedPins));
-  
-  if (storedIps) {
-    const parsedIps = JSON.parse(storedIps);
-    const devicesWithId = parsedIps.map((ip, index) => ({
+  const loadStoredData = () => {
+    const storedImages = JSON.parse(localStorage.getItem('storedImages') || '[]');
+    const storedPins = JSON.parse(localStorage.getItem('pins') || '[]');
+    const storedIps = JSON.parse(localStorage.getItem('ips') || '[]');
+
+    setImages(storedImages);
+    setPins(storedPins);
+    
+    const devicesWithId = storedIps.map((ip, index) => ({
       id: index + 1,
       ipAddress: ip,
       status: 'unknown',
     }));
     setDevicesList(devicesWithId);
-    pingIps(devicesWithId); // Call pingIps immediately after setting devices
-  }
-};
+    pingIps(devicesWithId);
+  };
 
-const pingIps = async (devices) => {
-  let activeCount = 0;
-  let inactiveCount = 0;
+  const pingIps = async (devices) => {
+    let activeCount = 0;
+    let inactiveCount = 0;
 
-  try {
-    const response = await axios.get(`http://127.0.0.1:8080/ping`, {
-      params: { ips: devices.map(device => device.ipAddress).join(',') },
-    });
+    try {
+      const response = await axios.get(`http://127.0.0.1:8080/ping`, {
+        params: { ips: devices.map(device => device.ipAddress).join(',') },
+      });
 
-    const results = response.data;
+      const results = response.data;
 
-    const updatedDevicesList = devices.map(device => {
-      const status = results[device.ipAddress] || 'inactive';
-      return { ...device, status };
-    });
+      const updatedDevicesList = devices.map(device => {
+        const status = results[device.ipAddress] || 'inactive';
+        return { ...device, status };
+      });
 
-    setDevicesList(updatedDevicesList);
+      setDevicesList(updatedDevicesList);
 
-    activeCount = updatedDevicesList.filter(device => device.status === 'active').length;
-    inactiveCount = updatedDevicesList.length - activeCount;
+      activeCount = updatedDevicesList.filter(device => device.status === 'active').length;
+      inactiveCount = updatedDevicesList.length - activeCount;
 
-    setActiveCount(activeCount);
-    setInactiveCount(inactiveCount);
-    setInactiveIps(updatedDevicesList.filter(device => device.status === 'inactive').map(device => device.ipAddress));
-  } catch (error) {
-    console.error('Error pinging IPs:', error);
-  }
-};
+      setActiveCount(activeCount);
+      setInactiveCount(inactiveCount);
+      setInactiveIps(updatedDevicesList.filter(device => device.status === 'inactive').map(device => device.ipAddress));
+    } catch (error) {
+      console.error('Error pinging IPs:', error);
+    }
+  };
 
-useEffect(() => {
-  const intervalId = setInterval(() => {
-    pingIps(devicesList); // Use the latest devicesList
-  }, 15000); // Set interval to call pingIps every 15 seconds
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      pingIps(devicesList);
+    }, 15000);
 
-  return () => clearInterval(intervalId); // Cleanup on unmount
-}, [devicesList]); // Dependencies include devicesList
+    return () => clearInterval(intervalId);
+  }, [devicesList]);
 
-  // Convert file to base64
   const fileToBase64 = (file) => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -122,27 +121,35 @@ useEffect(() => {
     if (file && file.type.startsWith('image/')) {
       try {
         const base64Image = await fileToBase64(file);
-        setImage(base64Image);
-        localStorage.setItem('storedImage', base64Image);
+        const updatedImages = [...images, base64Image];
+        setImages(updatedImages);
+        localStorage.setItem('storedImages', JSON.stringify(updatedImages));
+        setCurrentImageIndex(updatedImages.length - 1);
       } catch (error) {
         console.error('Error converting image:', error);
       }
     }
     setIsDragging(false);
   };
-  const handleClearImage = () => {
-    setImage(null); // Clear the image state
-    localStorage.removeItem('storedImage'); // Clear from localStorage
-};
 
+  const handleClearImage = () => {
+    const updatedImages = images.filter((_, index) => index !== currentImageIndex);
+    setImages(updatedImages);
+    localStorage.setItem('storedImages', JSON.stringify(updatedImages));
+    if (currentImageIndex >= updatedImages.length) {
+      setCurrentImageIndex(Math.max(0, updatedImages.length - 1));
+    }
+  };
 
   const handleImageChange = async (e) => {
     const file = e.target.files[0];
     if (file && file.type.startsWith('image/')) {
       try {
         const base64Image = await fileToBase64(file);
-        setImage(base64Image);
-        localStorage.setItem('storedImage', base64Image);
+        const updatedImages = [...images, base64Image];
+        setImages(updatedImages);
+        localStorage.setItem('storedImages', JSON.stringify(updatedImages));
+        setCurrentImageIndex(updatedImages.length - 1);
       } catch (error) {
         console.error('Error converting image:', error);
       }
@@ -150,8 +157,9 @@ useEffect(() => {
   };
 
   const handleClearPins = () => {
-    setPins([]);
-    localStorage.removeItem('pins');
+    const updatedPins = pins.filter(pin => pin.imageIndex !== currentImageIndex);
+    setPins(updatedPins);
+    localStorage.setItem('pins', JSON.stringify(updatedPins));
   };
 
   const handleImageClick = (e) => {
@@ -159,7 +167,7 @@ useEffect(() => {
     const rect = e.target.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
-    setCurrentPin({ x, y, name: '', devices: [] });
+    setCurrentPin({ x, y, name: '', devices: [], imageIndex: currentImageIndex });
     setSelectedDevices([]);
     setStep(1);
     setDialogOpen(true);
@@ -224,16 +232,20 @@ useEffect(() => {
     setViewingStage(false);
   };
 
+  const handlePrevImage = () => {
+    setCurrentImageIndex((prevIndex) => (prevIndex > 0 ? prevIndex - 1 : images.length - 1));
+  };
+
+  const handleNextImage = () => {
+    setCurrentImageIndex((prevIndex) => (prevIndex < images.length - 1 ? prevIndex + 1 : 0));
+  };
+
   if (viewingStage) {
     return (
       <PinnedImageCard
-        image={image}
-        pins={pins.map(pin => ({
-          ...pin,
-          devices: pin.devices.map(deviceId => 
-            devicesList.find(device => device.id === deviceId)
-          ).filter(Boolean)
-        }))}
+        images={images}
+        pins={pins}
+        devicesList={devicesList}
         onEdit={handleEdit}
       />
     );
@@ -241,11 +253,11 @@ useEffect(() => {
 
   return (
     <Box>
-            <AppBar position="static" color="primary" elevation={0}>
+      <AppBar position="static" color="primary" elevation={0}>
         <Toolbar>
           <CloudIcon sx={{ mr: 2 }} />
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-            Image Drop Zone
+            Network Insights
           </Typography>
           <Button
             color="inherit"
@@ -265,34 +277,51 @@ useEffect(() => {
           </Button>
         </Toolbar>
       </AppBar>
-      <DropZone
-        isDragging={isDragging}
-        onDrop={handleDrop}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-      >
-        {image ? (
-          <Box position="relative">
-            <img
-              src={image}
-              alt="Dropped"
-              style={{ maxWidth: '100%', cursor: 'crosshair' }}
-              onClick={handleImageClick}
-            />
-            {pins.map((pin, index) => (
-              <Pin
-                key={index}
-                style={{ left: `${pin.x}px`, top: `${pin.y}px` }}
-                onClick={(e) => editPin(pin, e)}
-              >
-                {pin.name}
-              </Pin>
-            ))}
-          </Box>
-        ) : (
-          <Typography>Drag & Drop an image or click to upload</Typography>
-        )}
-      </DropZone>
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', my: 2 }}>
+        <IconButton onClick={handlePrevImage} disabled={images.length <= 1}>
+          <ChevronLeftIcon />
+        </IconButton>
+        <Typography variant="h6" sx={{ mx: 2 }}>
+          {images.length > 0 ? `Image ${currentImageIndex + 1} of ${images.length}` : 'No Images'}
+        </Typography>
+        <IconButton onClick={handleNextImage} disabled={images.length <= 1}>
+          <ChevronRightIcon />
+        </IconButton>
+      </Box>
+      <Card sx={{ maxWidth: 600, margin: 'auto' }}>
+        <CardContent>
+          <DropZone
+            isDragging={isDragging}
+            onDrop={handleDrop}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+          >
+            {images.length > 0 ? (
+              <Box position="relative">
+                <img
+                  src={images[currentImageIndex]}
+                  alt={`Image ${currentImageIndex + 1}`}
+                  style={{ maxWidth: '100%', cursor: 'crosshair' }}
+                  onClick={handleImageClick}
+                />
+                {pins
+                  .filter(pin => pin.imageIndex === currentImageIndex)
+                  .map((pin, index) => (
+                    <Pin
+                      key={index}
+                      style={{ left: `${pin.x}px`, top: `${pin.y}px` }}
+                      onClick={(e) => editPin(pin, e)}
+                    >
+                      {pin.name}
+                    </Pin>
+                  ))}
+              </Box>
+            ) : (
+              <Typography>Drag & Drop an image or click to upload</Typography>
+            )}
+          </DropZone>
+        </CardContent>
+      </Card>
 
       <input
         id="imageInput"
@@ -302,19 +331,20 @@ useEffect(() => {
         onChange={handleImageChange}
       />
 
-      <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
+      <Box sx={{ display: 'flex', gap: 2, mt: 2, justifyContent: 'center' }}>
         <Button
           variant="contained"
           color="primary"
           onClick={() => document.getElementById('imageInput').click()}
+          startIcon={<AddIcon />}
         >
-          Upload Image
+          Add Image
         </Button>
         <Button
           variant="contained"
           color="secondary"
           onClick={handleConfirm}
-          disabled={!image || pins.length === 0}
+          disabled={images.length === 0 || pins.length === 0}
         >
           Confirm
         </Button>
@@ -322,14 +352,18 @@ useEffect(() => {
           variant="contained" 
           onClick={handleClearPins} 
           color="error"
-          disabled={pins.length === 0}
+          disabled={pins.filter(pin => pin.imageIndex === currentImageIndex).length === 0}
         >
           Clear Pins
         </Button>
-        <Button variant="contained" onClick={handleClearImage} color="error">
-    Clear Image
-</Button>
-
+        <Button 
+          variant="contained" 
+          onClick={handleClearImage} 
+          color="error"
+          disabled={images.length === 0}
+        >
+          Remove Image
+        </Button>
       </Box>
 
       <Dialog open={dialogOpen} onClose={handleDialogClose}>

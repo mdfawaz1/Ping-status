@@ -72,7 +72,7 @@ const authenticateToken = async (req, res, next) => {
 
     // Check if session is within 5 minutes
     const session = user.sessions.find(s => s.token === token);
-    const sessionAge = Date.now() - session.createdAt;
+    const sessionAge = Date.now() - new Date(session.createdAt).getTime();
     
     if (sessionAge > SESSION_DURATION) {
       console.log(`Session expired for user ${decoded.userId}. Age: ${sessionAge}ms`);
@@ -84,7 +84,7 @@ const authenticateToken = async (req, res, next) => {
       return res.status(401).json({ message: 'Session expired' });
     }
 
-    console.log(`Valid session for user ${decoded.userId}. Session age: ${sessionAge}ms`);
+    console.log(`Valid session for user ${decoded.username}. Session age: ${sessionAge}ms`);
     req.user = decoded;
     next();
   } catch (error) {
@@ -201,6 +201,7 @@ app.get('*', (req, res) => {
 // Clean up expired sessions every minute
 setInterval(async () => {
   try {
+    // Only remove expired sessions without affecting user details
     const result = await User.updateMany(
       {},
       { $pull: { sessions: { createdAt: { $lt: new Date(Date.now() - SESSION_DURATION) } } } }
@@ -214,5 +215,5 @@ setInterval(async () => {
 
 app.listen(22000, () => {
   console.log('Server is running on port 22000');
-  console.log(`Session duration set to ${SESSION_DURATION/1000} seconds`);
+  console.log(`Session duration set to ${SESSION_DURATION / 1000} seconds`);
 });
