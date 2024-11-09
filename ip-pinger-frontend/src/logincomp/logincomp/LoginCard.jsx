@@ -244,7 +244,7 @@ const [isPasswordUnFocused, setIsPasswordUnFocused] = useState(false);
             <>
               <Button
                 variant="contained"
-                color="secondary"
+                color="Blue"
                 fullWidth
                 className="register-button"
                 onClick={registerUser}
@@ -265,7 +265,7 @@ const [isPasswordUnFocused, setIsPasswordUnFocused] = useState(false);
             <>
               <Button
                 variant="contained"
-                color="secondary"
+                color="Blue"
                 fullWidth
                 className="login-button"
                 onClick={loginUser}
