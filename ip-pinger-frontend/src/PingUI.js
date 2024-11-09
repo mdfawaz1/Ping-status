@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom'; 
+import { useNavigate } from 'react-router-dom';
 import {
   Menu,
   Box,
@@ -38,6 +38,7 @@ import {
   useMediaQuery,
   LinearProgress,
   Avatar,
+  Switch,
 } from '@mui/material';
 import {
   Person as PersonIcon,
@@ -55,24 +56,15 @@ import {
   Build as BuildIcon,
   Code as CodeIcon,
   BugReport as BugReportIcon,
-  ChevronDown,
-  MoreHorizontal,
-  Star,
-  ArrowUpRight,
-  Link,
-  Trash2,
-  LogOut,
-  Plus,
-  ChevronRight,
-  ChevronsUpDown,
 } from '@mui/icons-material';
 import { Link as RouterLink } from 'react-router-dom';
 
-const theme = createTheme({
+const lightTheme = createTheme({
   palette: {
     primary: { main: '#6e67f4' },
     secondary: { main: '#ff5252' },
     background: { default: '#f3f0ff', paper: '#ffffff' },
+    text: { primary: '#000' },
   },
   typography: {
     fontFamily: 'Poppins, sans-serif',
@@ -106,6 +98,22 @@ const theme = createTheme({
         },
       },
     },
+  },
+});
+
+const darkTheme = createTheme({
+  palette: {
+    mode: 'dark',
+    primary: { main: '#bb86fc' },
+    secondary: { main: '#03dac6' },
+    background: { default: '#121212', paper: '#1e1e1e' },
+    text: { primary: '#fff' },
+  },
+  typography: {
+    fontFamily: 'Poppins, sans-serif',
+    h4: { fontWeight: 700, letterSpacing: '0.05em' },
+    h5: { fontWeight: 600 },
+    h6: { fontWeight: 600 },
   },
 });
 
@@ -164,12 +172,12 @@ const PingUI = () => {
   const [snackbarSeverity, setSnackbarSeverity] = useState('success');
   const [pingResults, setPingResults] = useState({});
   const [uptimeStats, setUptimeStats] = useState({});
-
   const [openCategoryDialog, setOpenCategoryDialog] = useState(false);
   const [newCategory, setNewCategory] = useState('');
   const [newCategoryIcon, setNewCategoryIcon] = useState('');
+  const [darkMode, setDarkMode] = useState(false);
 
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isMobile = useMediaQuery(lightTheme.breakpoints.down('sm'));
 
   useEffect(() => {
     localStorage.setItem('myAppIpData', JSON.stringify(ips));
@@ -214,11 +222,11 @@ const PingUI = () => {
       delete newTracking[ipToRemove];
       return newTracking;
     });
-    
+
     if (selectedIp === ipToRemove) {
       setSelectedIp('');
     }
-    
+
     showSnackbar('IP removed successfully');
   };
 
@@ -256,6 +264,8 @@ const PingUI = () => {
 
   const getFilteredIps = () => {
     if (filterCategory === 'all') return ips;
+    if (filterCategory === 'active') return ips.filter(ip => pingResults[ip.address] === 'active');
+    if (filterCategory === 'inactive') return ips.filter(ip => pingResults[ip.address] === 'inactive');
     return ips.filter(ip => ip.category === filterCategory);
   };
 
@@ -324,18 +334,10 @@ const PingUI = () => {
 
       localStorage.removeItem('user');
       localStorage.removeItem('token');
-      navigate('/login', { replace: true }); 
+      navigate('/login', { replace: true });
       window.location.reload();
     } catch (error) {
       console.error('Error during logout:', error);
-    }
-  };
-
-  const handleProfileUpdate = () => {
-    setUserName(newName);
-    if (newLogo) {
-      const logoURL = URL.createObjectURL(newLogo);
-      setUserLogo(logoURL);
     }
   };
 
@@ -366,13 +368,13 @@ const PingUI = () => {
     setUptimeStats(prevStats => {
       const currentUptime = prevStats[ip] || 100;
       let newUptime = currentUptime;
-      
+
       if (isActive) {
         newUptime = Math.min(100, currentUptime + 0.5);
       } else {
         newUptime = Math.max(0, currentUptime - 1);
       }
-      
+
       return { ...prevStats, [ip]: newUptime };
     });
   };
@@ -403,7 +405,7 @@ const PingUI = () => {
         const isActive = status === 'active';
         updateOfflineTracking(ip, isActive);
         updateUptimeStats(ip, isActive);
-        
+
         if (isActive) {
           active++;
         } else {
@@ -415,7 +417,7 @@ const PingUI = () => {
       console.error('Error pinging IPs:', error);
       showSnackbar('Error pinging IPs', 'error');
     }
-    
+
     setActiveCount(active);
     setInactiveCount(inactive);
     setInactiveIps(inactiveIpList);
@@ -426,7 +428,7 @@ const PingUI = () => {
   const [userLogo, setUserLogo] = useState(localStorage.getItem('userLogo') || 'https://via.placeholder.com/100');
   const [newName, setNewName] = useState(userName);
   const [newLogo, setNewLogo] = useState(null);
-  
+
   useEffect(() => {
     const storedName = localStorage.getItem('userName');
     const storedLogo = localStorage.getItem('userLogo');
@@ -438,10 +440,10 @@ const PingUI = () => {
       setUserLogo(storedLogo);
     }
   }, []);
-  
+
   const handleConfirmUpdate = async () => {
     setUserName(newName);
-  
+
     if (newLogo) {
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -449,18 +451,18 @@ const PingUI = () => {
         setUserLogo(base64Image);
         localStorage.setItem('userLogo', base64Image);
       };
-  
+
       reader.readAsDataURL(newLogo);
     }
-  
+
     localStorage.setItem('userName', newName);
     setEditMode(false);
   };
-  
+
   const handleCancelUpdate = () => {
     setEditMode(false);
   };
-  
+
   useEffect(() => {
     if (ips.length > 0) {
       pingIps();
@@ -483,7 +485,7 @@ const PingUI = () => {
         const content = e.target.result;
         const uploadedIps = content.split('\n').map((line) => line.trim()).filter(Boolean);
         const newIps = uploadedIps.filter(ip => !ips.some(existingIp => existingIp.address === ip));
-        
+
         let categoryForUpload = selectedCategory || 'Others';
 
         if (categoryForUpload === 'Others' && !categories.some((cat) => cat.name === 'Others')) {
@@ -509,14 +511,14 @@ const PingUI = () => {
   };
 
   return (
-    <ThemeProvider theme={theme}>
+    <ThemeProvider theme={darkMode ? darkTheme : lightTheme}>
       <CssBaseline />
-      <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', backgroundColor: '#f3f0ff' }}>
-        <AppBar position="static" color="primary" elevation={0} sx={{ backgroundColor: '#6e67f4' }}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+        <AppBar position="static" color="primary" elevation={0}>
           <Toolbar>
-            <CloudIcon sx={{ mr: 2 }} />
+            {/* <CloudIcon sx={{ mr: 2 }} /> */}
             <Typography variant="h4" component="div" sx={{ flexGrow: 1, fontWeight: 700 }}>
-              Network Monitor
+              Network Insights
             </Typography>
             <Button
               color="inherit"
@@ -545,6 +547,7 @@ const PingUI = () => {
             >
               Manage Categories
             </Button>
+            <Switch checked={darkMode} onChange={() => setDarkMode(!darkMode)} />
             <IconButton onClick={handleProfileClick} sx={{ color: 'white' }}>
               <Avatar src={userLogo} alt={userName} />
             </IconButton>
@@ -562,15 +565,15 @@ const PingUI = () => {
               alt="User Logo"
               height="80"
               image={userLogo || 'https://via.placeholder.com/100'}
-              sx={{ 
-                width: 80, 
-                height: 80, 
-                borderRadius: '50%', 
-                margin: '0 auto', 
-                objectFit: 'cover' 
+              sx={{
+                width: 80,
+                height: 80,
+                borderRadius: '50%',
+                margin: '0 auto',
+                objectFit: 'cover'
               }}
             />
-            
+
             <CardContent>
               <Typography variant="h6" align="center">
                 {userName || 'User Name'}
@@ -618,7 +621,7 @@ const PingUI = () => {
                   >
                     Update Profile
                   </Button>
-                  
+
                   <Button
                     onClick={handleLogout}
                     variant="contained"
@@ -691,13 +694,15 @@ const PingUI = () => {
                       Monitored IPs
                     </Typography>
                     <FormControl sx={{ minWidth: 200 }}>
-                      <InputLabel>Filter by Category</InputLabel>
+                      <InputLabel>Filter by</InputLabel>
                       <Select
                         value={filterCategory}
-                        label="Filter by Category"
+                        label="Filter by"
                         onChange={(e) => setFilterCategory(e.target.value)}
                       >
-                        <MenuItem value="all">All Categories</MenuItem>
+                        <MenuItem value="all">All IPs</MenuItem>
+                        <MenuItem value="active">Active IPs</MenuItem>
+                        <MenuItem value="inactive">Inactive IPs</MenuItem>
                         {categories.map((category) => (
                           <MenuItem key={category.name} value={category.name}>
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -749,68 +754,68 @@ const PingUI = () => {
                                 </Box>
                               }
                             />
-<Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-  <Tooltip title={`Uptime: ${uptime.toFixed(1)}%`}>
-    <Box sx={{ position: 'relative', width: 60, height: 60 }}>
-      <svg viewBox="0 0 100 100" width="60" height="60">
-        <circle
-          cx="50"
-          cy="50"
-          r="45"
-          fill="none"
-          stroke="#e0e0e0"
-          strokeWidth="8"
-        />
-        <circle
-          cx="50"
-          cy="50"
-          r="45"
-          fill="none"
-          stroke={getProgressColor(uptime)}
-          strokeWidth="8"
-          strokeLinecap="round"
-          strokeDasharray={`${2 * Math.PI * 45}`}
-          strokeDashoffset={2 * Math.PI * 45 * (1 - uptime / 100)}
-          transform="rotate(-90 50 50)"
-        />
-      </svg>
-      <Typography
-        variant="body2"
-        sx={{
-          position: 'absolute',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          fontWeight: 'bold',
-        }}
-      >
-        {uptime.toFixed(0)}%
-      </Typography>
-    </Box>
-  </Tooltip>
-  <Box sx={{ width: 80 }}> {/* Fixed width for consistent alignment */}
-    <Chip
-      label={
-        pingResults[ip.address] === 'active'
-          ? 'Active'
-          : pingResults[ip.address] === 'inactive'
-          ? 'Inactive'
-          : 'Unknown'
-      }
-      color={
-        pingResults[ip.address] === 'active'
-          ? 'success'
-          : pingResults[ip.address] === 'inactive'
-          ? 'error'
-          : 'default'
-      }
-      sx={{ fontSize: '0.875rem', width: '100%' }} 
-    />
-  </Box>
-  <IconButton edge="end" onClick={() => removeIp(ip.address)} color="error" size="large">
-    <DeleteIcon />
-  </IconButton>
-</Box>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                              <Tooltip title={`Uptime: ${uptime.toFixed(1)}%`}>
+                                <Box sx={{ position: 'relative', width: 60, height: 60 }}>
+                                  <svg viewBox="0 0 100 100" width="60" height="60">
+                                    <circle
+                                      cx="50"
+                                      cy="50"
+                                      r="45"
+                                      fill="none"
+                                      stroke="#e0e0e0"
+                                      strokeWidth="8"
+                                    />
+                                    <circle
+                                      cx="50"
+                                      cy="50"
+                                      r="45"
+                                      fill="none"
+                                      stroke={getProgressColor(uptime)}
+                                      strokeWidth="8"
+                                      strokeLinecap="round"
+                                      strokeDasharray={`${2 * Math.PI * 45}`}
+                                      strokeDashoffset={2 * Math.PI * 45 * (1 - uptime / 100)}
+                                      transform="rotate(-90 50 50)"
+                                    />
+                                  </svg>
+                                  <Typography
+                                    variant="body2"
+                                    sx={{
+                                      position: 'absolute',
+                                      top: '50%',
+                                      left: '50%',
+                                      transform: 'translate(-50%, -50%)',
+                                      fontWeight: 'bold',
+                                    }}
+                                  >
+                                    {uptime.toFixed(0)}%
+                                  </Typography>
+                                </Box>
+                              </Tooltip>
+                              <Box sx={{ width: 80 }}>
+                                <Chip
+                                  label={
+                                    pingResults[ip.address] === 'active'
+                                      ? 'Active'
+                                      : pingResults[ip.address] === 'inactive'
+                                        ? 'Inactive'
+                                        : 'Unknown'
+                                  }
+                                  color={
+                                    pingResults[ip.address] === 'active'
+                                      ? 'success'
+                                      : pingResults[ip.address] === 'inactive'
+                                        ? 'error'
+                                        : 'default'
+                                  }
+                                  sx={{ fontSize: '0.875rem', width: '100%' }}
+                                />
+                              </Box>
+                              <IconButton edge="end" onClick={() => removeIp(ip.address)} color="error" size="large">
+                                <DeleteIcon />
+                              </IconButton>
+                            </Box>
                           </ListItem>
                         );
                       })}
@@ -859,7 +864,7 @@ const PingUI = () => {
                   </Card>
                 </Grid>
                 <Grid item xs={12}>
-                <Card>
+                  <Card>
                     <CardContent>
                       <Typography variant="h5" sx={{ mb: 3, fontWeight: 'bold' }}>
                         Category Statistics
