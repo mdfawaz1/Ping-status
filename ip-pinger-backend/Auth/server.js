@@ -24,28 +24,46 @@ mongoose.connect(MONGODB_URI)
   .then(() => console.log('Connected to MongoDB'))
   .catch(err => console.error('MongoDB connection error:', err));
 
-// User Schema with 5-minute session expiry
+// Separate Schema for Sessions
+const sessionSchema = new mongoose.Schema({
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
+  token: {
+    type: String,
+    required: true
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now,
+    expires: SESSION_DURATION / 1000 // TTL index in seconds
+  }
+});
+
+// User Schema without sessions
 const userSchema = new mongoose.Schema({
-  username: { 
-    type: String, 
-    required: true, 
-    unique: true 
+  username: {
+    type: String,
+    required: true,
+    unique: true
   },
-  password: { 
-    type: String, 
-    required: true 
+  password: {
+    type: String,
+    required: true
   },
-  sessions: [{
-    token: String,
-    createdAt: { 
-      type: Date, 
-      default: Date.now,
-      expires: 300 // 5 minutes in seconds
-    }
-  }]
+  createdAt: {
+    type: Date,
+    default: Date.now,
+    immutable: true // Ensures creation date can't be modified
+  }
+}, {
+  timestamps: true // Adds updatedAt field
 });
 
 const User = mongoose.model('User', userSchema);
+const Session = mongoose.model('Session', sessionSchema);
 
 // Middleware to verify JWT token
 const authenticateToken = async (req, res, next) => {
@@ -59,32 +77,19 @@ const authenticateToken = async (req, res, next) => {
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
     
-    // Check if token exists in user's sessions
-    const user = await User.findOne({
-      _id: decoded.userId,
-      'sessions.token': token
-    });
-
-    if (!user) {
-      console.log(`Session not found for user ${decoded.userId}`);
+    // Check if session exists
+    const session = await Session.findOne({ token });
+    if (!session) {
       return res.status(401).json({ message: 'Session expired or invalid' });
     }
 
-    // Check if session is within 5 minutes
-    const session = user.sessions.find(s => s.token === token);
-    const sessionAge = Date.now() - new Date(session.createdAt).getTime();
-    
-    if (sessionAge > SESSION_DURATION) {
-      console.log(`Session expired for user ${decoded.userId}. Age: ${sessionAge}ms`);
-      // Remove expired session
-      await User.updateOne(
-        { _id: decoded.userId },
-        { $pull: { sessions: { token: token } } }
-      );
-      return res.status(401).json({ message: 'Session expired' });
+    // Verify user exists
+    const user = await User.findById(decoded.userId);
+    if (!user) {
+      return res.status(401).json({ message: 'User not found' });
     }
 
-    console.log(`Valid session for user ${decoded.username}. Session age: ${sessionAge}ms`);
+    console.log(`Valid session for user ${user.username}`);
     req.user = decoded;
     next();
   } catch (error) {
@@ -110,8 +115,7 @@ app.post('/auth/register', async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
     const user = new User({
       username,
-      password: hashedPassword,
-      sessions: []
+      password: hashedPassword
     });
 
     await user.save();
@@ -141,16 +145,18 @@ app.post('/auth/login', async (req, res) => {
     const token = jwt.sign(
       { userId: user._id, username: user.username },
       JWT_SECRET,
-      { expiresIn: '5m' } // JWT expiration set to 5 minutes
+      { expiresIn: '5m' }
     );
 
-    // Add new session
-    user.sessions.push({ token, createdAt: new Date() });
-    await user.save();
+    // Create new session
+    const session = new Session({
+      userId: user._id,
+      token
+    });
+    await session.save();
 
     console.log(`User logged in: ${username}`);
     console.log(`Session started at: ${new Date().toISOString()}`);
-    console.log(`Session will expire at: ${new Date(Date.now() + SESSION_DURATION).toISOString()}`);
 
     res.json({
       message: 'Login successful',
@@ -159,7 +165,7 @@ app.post('/auth/login', async (req, res) => {
         id: user._id,
         username: user.username
       },
-      expiresIn: SESSION_DURATION // Send expiration time to client
+      expiresIn: SESSION_DURATION
     });
   } catch (error) {
     console.error('Login error:', error);
@@ -172,10 +178,8 @@ app.post('/auth/logout', authenticateToken, async (req, res) => {
   try {
     const token = req.headers.authorization.split(' ')[1];
     
-    await User.updateOne(
-      { _id: req.user.userId },
-      { $pull: { sessions: { token: token } } }
-    );
+    // Remove the specific session
+    await Session.deleteOne({ token });
 
     console.log(`User logged out: ${req.user.username}`);
     res.json({ message: 'Logged out successfully' });
@@ -187,31 +191,18 @@ app.post('/auth/logout', authenticateToken, async (req, res) => {
 
 // Protected route example
 app.get('/protected', authenticateToken, (req, res) => {
-  res.json({ 
-    message: 'This is a protected route', 
+  res.json({
+    message: 'This is a protected route',
     user: req.user,
     accessTime: new Date().toISOString()
   });
 });
+
 app.use(express.static(path.join(__dirname, 'client/build')));
 
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'client/build', 'index.html'));
 });
-// Clean up expired sessions every minute
-setInterval(async () => {
-  try {
-    // Only remove expired sessions without affecting user details
-    const result = await User.updateMany(
-      {},
-      { $pull: { sessions: { createdAt: { $lt: new Date(Date.now() - SESSION_DURATION) } } } }
-    );
-    console.log(`Cleaned up expired sessions at ${new Date().toISOString()}`);
-    console.log(`Modified ${result.modifiedCount} users`);
-  } catch (error) {
-    console.error('Session cleanup error:', error);
-  }
-}, 60000); // Run every minute
 
 app.listen(22000, () => {
   console.log('Server is running on port 22000');

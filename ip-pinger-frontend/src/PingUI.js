@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import PersonIcon from '@mui/icons-material/Person';
 import { useNavigate } from 'react-router-dom'; 
 import {
   Menu,
@@ -37,51 +36,58 @@ import {
   Toolbar,
   CssBaseline,
   useMediaQuery,
+  LinearProgress,
+  Avatar,
 } from '@mui/material';
-import DeleteIcon from '@mui/icons-material/Delete';
-import AddCircleIcon from '@mui/icons-material/AddCircle';
-import CategoryIcon from '@mui/icons-material/Category';
-import AccessTimeIcon from '@mui/icons-material/AccessTime';
-import { Link } from 'react-router-dom'; 
-import WarningIcon from '@mui/icons-material/Warning';
-import CloudIcon from '@mui/icons-material/Cloud';
-import UploadFileIcon from '@mui/icons-material/UploadFile';
-import CameraAltIcon from '@mui/icons-material/CameraAlt';
-import VideocamIcon from '@mui/icons-material/Videocam';
-import NetworkCheckIcon from '@mui/icons-material/NetworkCheck';
-import SensorsIcon from '@mui/icons-material/Sensors';
-import BuildIcon from '@mui/icons-material/Build';
-import CodeIcon from '@mui/icons-material/Code';
-import BugReportIcon from '@mui/icons-material/BugReport';
+import {
+  Person as PersonIcon,
+  Delete as DeleteIcon,
+  AddCircle as AddCircleIcon,
+  Category as CategoryIcon,
+  AccessTime as AccessTimeIcon,
+  Warning as WarningIcon,
+  Cloud as CloudIcon,
+  UploadFile as UploadFileIcon,
+  CameraAlt as CameraAltIcon,
+  Videocam as VideocamIcon,
+  NetworkCheck as NetworkCheckIcon,
+  Sensors as SensorsIcon,
+  Build as BuildIcon,
+  Code as CodeIcon,
+  BugReport as BugReportIcon,
+  ChevronDown,
+  MoreHorizontal,
+  Star,
+  ArrowUpRight,
+  Link,
+  Trash2,
+  LogOut,
+  Plus,
+  ChevronRight,
+  ChevronsUpDown,
+} from '@mui/icons-material';
+import { Link as RouterLink } from 'react-router-dom';
 
 const theme = createTheme({
   palette: {
-    primary: {
-      main: '#3f51b5',
-    },
-    secondary: {
-      main: '#f50057',
-    },
-    background: {
-      default: '#f5f5f5',
-      paper: '#ffffff',
-    },
+    primary: { main: '#6e67f4' },
+    secondary: { main: '#ff5252' },
+    background: { default: '#f3f0ff', paper: '#ffffff' },
   },
   typography: {
-    fontFamily: 'Roboto, Arial, sans-serif',
-    h4: {
-      fontWeight: 600,
-    },
-    h6: {
-      fontWeight: 600,
-    },
+    fontFamily: 'Poppins, sans-serif',
+    h4: { fontWeight: 700, letterSpacing: '0.05em' },
+    h5: { fontWeight: 600 },
+    h6: { fontWeight: 600 },
   },
   components: {
     MuiButton: {
       styleOverrides: {
         root: {
           textTransform: 'none',
-          fontWeight: 600,
+          fontWeight: 500,
+          borderRadius: '12px',
+          '&:hover': { backgroundColor: '#5c56d3' },
         },
       },
     },
@@ -89,17 +95,14 @@ const theme = createTheme({
       styleOverrides: {
         root: {
           boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-          transition: 'box-shadow 0.3s ease-in-out',
-          '&:hover': {
-            boxShadow: '0 6px 12px rgba(0, 0, 0, 0.15)',
-          },
+          borderRadius: '16px',
         },
       },
     },
     MuiChip: {
       styleOverrides: {
         root: {
-          fontWeight: 600,
+          borderRadius: '8px',
         },
       },
     },
@@ -115,7 +118,6 @@ const iconMap = {
   CodeIcon: <CodeIcon />,
   BugReportIcon: <BugReportIcon />,
   CategoryIcon: <CategoryIcon />,
-  // Add more icons as needed
 };
 
 const availableIcons = [
@@ -126,7 +128,6 @@ const availableIcons = [
   { label: 'Code', value: 'CodeIcon' },
   { label: 'Bug', value: 'BugReportIcon' },
   { label: 'Category', value: 'CategoryIcon' },
-  // Add more icons as needed
 ];
 
 const PingUI = () => {
@@ -162,7 +163,7 @@ const PingUI = () => {
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState('success');
   const [pingResults, setPingResults] = useState({});
-  
+  const [uptimeStats, setUptimeStats] = useState({});
 
   const [openCategoryDialog, setOpenCategoryDialog] = useState(false);
   const [newCategory, setNewCategory] = useState('');
@@ -171,7 +172,6 @@ const PingUI = () => {
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   useEffect(() => {
-    // Use unique keys for localStorage to prevent conflicts
     localStorage.setItem('myAppIpData', JSON.stringify(ips));
     localStorage.setItem('ips', JSON.stringify(ips.map(ip => ip.address)));
     localStorage.setItem('myAppCustomCategories', JSON.stringify(categories));
@@ -297,10 +297,8 @@ const PingUI = () => {
     });
     return stats;
   };
+
   const [anchorEl, setAnchorEl] = useState(null);
-
-
-
   const navigate = useNavigate();
 
   const handleProfileClick = (event) => {
@@ -316,7 +314,7 @@ const PingUI = () => {
       const response = await fetch('http://localhost:22000/auth/logout', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`, // Send the token in the headers
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },
       });
 
@@ -324,33 +322,29 @@ const PingUI = () => {
         throw new Error('Failed to log out');
       }
 
-      // Clear user data from local storage
       localStorage.removeItem('user');
-      localStorage.removeItem('token'); // Clear the token to end session
-// Assuming you have user state in your component or context
-
-      // Redirect to login screen
+      localStorage.removeItem('token');
       navigate('/login', { replace: true }); 
       window.location.reload();
     } catch (error) {
       console.error('Error during logout:', error);
-      // Optionally, display an error message to the user
     }
   };
 
   const handleProfileUpdate = () => {
-    setUserName(newName); // Update the displayed name
+    setUserName(newName);
     if (newLogo) {
-      const logoURL = URL.createObjectURL(newLogo); // Create URL for the image
-      setUserLogo(logoURL); // Update the displayed logo
+      const logoURL = URL.createObjectURL(newLogo);
+      setUserLogo(logoURL);
     }
   };
+
   useEffect(() => {
     const fetchUserData = async () => {
       try {
         const response = await fetch('/api/user', {
           headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`, // Send token for authentication
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
           },
         });
         const data = await response.json();
@@ -367,6 +361,22 @@ const PingUI = () => {
 
     fetchUserData();
   }, []);
+
+  const updateUptimeStats = (ip, isActive) => {
+    setUptimeStats(prevStats => {
+      const currentUptime = prevStats[ip] || 100;
+      let newUptime = currentUptime;
+      
+      if (isActive) {
+        newUptime = Math.min(100, currentUptime + 0.5);
+      } else {
+        newUptime = Math.max(0, currentUptime - 1);
+      }
+      
+      return { ...prevStats, [ip]: newUptime };
+    });
+  };
+
   const pingIps = async () => {
     let active = 0;
     let inactive = 0;
@@ -386,12 +396,13 @@ const PingUI = () => {
         params: { ips: ips.map(ip => ip.address).join(',') },
       });
       const results = response.data;
-      console.log("Res",results);
+      console.log("Res", results);
       setPingResults(results);
 
       for (const [ip, status] of Object.entries(results)) {
         const isActive = status === 'active';
         updateOfflineTracking(ip, isActive);
+        updateUptimeStats(ip, isActive);
         
         if (isActive) {
           active++;
@@ -409,14 +420,14 @@ const PingUI = () => {
     setInactiveCount(inactive);
     setInactiveIps(inactiveIpList);
   };
+
   const [editMode, setEditMode] = useState(false);
   const [userName, setUserName] = useState(localStorage.getItem('userName') || 'User Name');
   const [userLogo, setUserLogo] = useState(localStorage.getItem('userLogo') || 'https://via.placeholder.com/100');
-  const [newName, setNewName] = useState(userName); // State to update the name
+  const [newName, setNewName] = useState(userName);
   const [newLogo, setNewLogo] = useState(null);
   
   useEffect(() => {
-    // If there is a user name or logo in localStorage, set it when the component mounts
     const storedName = localStorage.getItem('userName');
     const storedLogo = localStorage.getItem('userLogo');
     if (storedName) {
@@ -429,33 +440,27 @@ const PingUI = () => {
   }, []);
   
   const handleConfirmUpdate = async () => {
-    // Update the user profile logic here (e.g., set userName and userLogo)
     setUserName(newName);
   
     if (newLogo) {
-      // Convert the image file to base64
       const reader = new FileReader();
       reader.onloadend = () => {
-        const base64Image = reader.result; // Get the base64 string
-  
-        setUserLogo(base64Image); // Set the logo in state
-        localStorage.setItem('userLogo', base64Image); // Save the base64 logo in localStorage
+        const base64Image = reader.result;
+        setUserLogo(base64Image);
+        localStorage.setItem('userLogo', base64Image);
       };
   
-      reader.readAsDataURL(newLogo); // Read file as base64
+      reader.readAsDataURL(newLogo);
     }
   
-    // Save the new name in localStorage
     localStorage.setItem('userName', newName);
-  
-    setEditMode(false); // Switch back to view mode
+    setEditMode(false);
   };
   
   const handleCancelUpdate = () => {
-    setEditMode(false); // Cancel update and revert to view mode
+    setEditMode(false);
   };
   
-
   useEffect(() => {
     if (ips.length > 0) {
       pingIps();
@@ -481,7 +486,6 @@ const PingUI = () => {
         
         let categoryForUpload = selectedCategory || 'Others';
 
-        // Check if 'Others' category exists, if not, add it
         if (categoryForUpload === 'Others' && !categories.some((cat) => cat.name === 'Others')) {
           setCategories([...categories, { name: 'Others', icon: 'CategoryIcon' }]);
         }
@@ -498,159 +502,140 @@ const PingUI = () => {
 
   const categoryStats = getCategoryStats();
 
+  const getProgressColor = (uptime) => {
+    if (uptime >= 90) return "#4CAF50";
+    if (uptime >= 75) return "#FFEB3B";
+    return "#F44336";
+  };
+
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-      <AppBar position="static" color="primary" elevation={0}>
-      <Toolbar>
-        <CloudIcon sx={{ mr: 2 }} />
-        <Typography variant="h4" component="div" sx={{ flexGrow: 1 }}>
-          IP Status Monitor
-        </Typography>
-        <Button
-          color="inherit"
-          component={Link}
-          to="/home"
-          size="large"
-          sx={{ mx: 2 }} // Adding horizontal margin for spacing
+      <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', backgroundColor: '#f3f0ff' }}>
+        <AppBar position="static" color="primary" elevation={0} sx={{ backgroundColor: '#6e67f4' }}>
+          <Toolbar>
+            <CloudIcon sx={{ mr: 2 }} />
+            <Typography variant="h4" component="div" sx={{ flexGrow: 1, fontWeight: 700 }}>
+              Network Monitor
+            </Typography>
+            <Button
+              color="inherit"
+              component={RouterLink}
+              to="/home"
+              size="large"
+              sx={{ mx: 2, fontWeight: 500 }}
+            >
+              Ping UI
+            </Button>
+            <Button
+              color="inherit"
+              component={RouterLink}
+              to="/image-dropzone"
+              size="large"
+              sx={{ mx: 2, fontWeight: 500 }}
+            >
+              Image Drop Zone
+            </Button>
+            <Button
+              color="inherit"
+              startIcon={<CategoryIcon />}
+              onClick={() => setOpenCategoryDialog(true)}
+              size="large"
+              sx={{ mx: 2, fontWeight: 500 }}
+            >
+              Manage Categories
+            </Button>
+            <IconButton onClick={handleProfileClick} sx={{ color: 'white' }}>
+              <Avatar src={userLogo} alt={userName} />
+            </IconButton>
+          </Toolbar>
+        </AppBar>
+
+        <Menu
+          anchorEl={anchorEl}
+          open={Boolean(anchorEl)}
+          onClose={handleClose}
         >
-          Ping UI
-        </Button>
-        <Button
-          color="inherit"
-          component={Link}
-          to="/image-dropzone"
-          size="large"
-          sx={{ mx: 2 }} // Adding horizontal margin for spacing
-        >
-          Image Drop Zone
-        </Button>
-        <Button
-          color="inherit"
-          startIcon={<CategoryIcon />}
-          onClick={() => setOpenCategoryDialog(true)} // Keep the original functionality
-          size="large"
-          sx={{ mx: 2 }} // Adding horizontal margin for spacing
-        >
-          Manage Categories
-        </Button>
-        <PersonIcon 
-          onClick={handleProfileClick}
-          sx={{ cursor: 'pointer', color: 'white', mx: 2 }} // Add spacing and cursor pointer
-          fontSize="large" // Adjust the icon size
-        />
-      </Toolbar>
+          <Card sx={{ minWidth: 250, maxWidth: 300, padding: 2 }}>
+            <CardMedia
+              component="img"
+              alt="User Logo"
+              height="80"
+              image={userLogo || 'https://via.placeholder.com/100'}
+              sx={{ 
+                width: 80, 
+                height: 80, 
+                borderRadius: '50%', 
+                margin: '0 auto', 
+                objectFit: 'cover' 
+              }}
+            />
+            
+            <CardContent>
+              <Typography variant="h6" align="center">
+                {userName || 'User Name'}
+              </Typography>
 
-      <Menu
-        anchorEl={anchorEl}
-        open={Boolean(anchorEl)}
-        onClose={handleClose}
-      >
-<Card sx={{ minWidth: 250, maxWidth: 300, padding: 2 }}>
-  {/* User Logo (fallback if no logo is uploaded) */}
-  <CardMedia
-    component="img"
-    alt="User Logo"
-    height="80"
-    image={userLogo || 'https://via.placeholder.com/100'}
-    sx={{ 
-      width: 80, 
-      height: 80, 
-      borderRadius: '50%', 
-      margin: '0 auto', 
-      objectFit: 'cover' 
-    }}
-  />
-  
-  <CardContent>
-    {/* Display User Name */}
-    <Typography variant="h6" align="center">
-      {userName || 'User Name'}
-    </Typography>
+              {editMode ? (
+                <>
+                  <TextField
+                    label="Update Name"
+                    variant="outlined"
+                    fullWidth
+                    margin="normal"
+                    value={newName}
+                    onChange={(e) => setNewName(e.target.value)}
+                  />
 
-    {/* If editMode is true, show input fields for updating the profile */}
-    {editMode ? (
-      <>
-        {/* Input to update the user name */}
-        <TextField
-          label="Update Name"
-          variant="outlined"
-          fullWidth
-          margin="normal"
-          value={newName}
-          onChange={(e) => setNewName(e.target.value)} // Update new name state
-        />
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => setNewLogo(e.target.files[0])}
+                    style={{ margin: '10px 0' }}
+                  />
 
-        {/* Input to upload a new logo */}
-        <input
-          type="file"
-          accept="image/*"
-          onChange={(e) => setNewLogo(e.target.files[0])} // Update new logo state
-          style={{ margin: '10px 0' }} // Space between input fields
-        />
+                  <Box display="flex" justifyContent="space-between" mt={2}>
+                    <Button onClick={handleConfirmUpdate} color="primary" variant="contained">
+                      Confirm
+                    </Button>
+                    <Button onClick={handleCancelUpdate} color="secondary" variant="outlined">
+                      Cancel
+                    </Button>
+                  </Box>
+                </>
+              ) : (
+                <Box display="flex" justifyContent="space-between" mt={2}>
+                  <Button
+                    onClick={() => setEditMode(true)}
+                    variant="contained"
+                    sx={{
+                      backgroundColor: '#E6E6FA',
+                      color: '#4B0082',
+                      '&:hover': {
+                        backgroundColor: '#D8BFD8',
+                      },
+                    }}
+                  >
+                    Update Profile
+                  </Button>
+                  
+                  <Button
+                    onClick={handleLogout}
+                    variant="contained"
+                    color="secondary"
+                  >
+                    Logout
+                  </Button>
+                </Box>
+              )}
+            </CardContent>
+          </Card>
+        </Menu>
 
-        {/* Confirm and Cancel buttons */}
-        <Box display="flex" justifyContent="space-between" mt={2}>
-          <Button onClick={handleConfirmUpdate} color="primary" size="small">
-            Confirm
-          </Button>
-          <Button onClick={handleCancelUpdate} color="secondary" size="small">
-            Cancel
-          </Button>
-        </Box>
-      </>
-    ) : (
-      /* If not in edit mode, show the Update Profile and Logout buttons */
-      <Box display="flex" justifyContent="space-between" mt={2}>
- <Button
-    onClick={() => setEditMode(true)}
-    size="small"
-    sx={{
-      backgroundColor: '#E6E6FA', // Light purple
-      color: '#4B0082', // Darker purple for text
-      borderRadius: '12px', // Add border radius
-      padding: '8px 16px', // Add padding for better spacing
-      '&:hover': {
-        backgroundColor: '#D8BFD8', // Lighter purple on hover
-        color: '#4B0082', // Keep text color on hover
-      },
-      transition: 'background-color 0.3s ease', // Smooth transition
-      marginRight: '8px', // Add spacing between buttons
-    }}
-  >
-    Update Profile
-  </Button>
-  
-  {/* Logout button */}
-  <Button
-    onClick={handleLogout}
-    size="small"
-    sx={{
-      backgroundColor: '#FF0000', // Dark red
-      color: '#FFFFFF', // White text
-      borderRadius: '12px', // Add border radius
-      padding: '8px 16px', // Add padding for better spacing
-      '&:hover': {
-        backgroundColor: '#8B0000', // Lighter red on hover
-        color: '#FFFFFF', // Keep text color on hover
-      },
-      transition: 'background-color 0.3s ease', // Smooth transition
-    }}
-  >
-    Logout
-  </Button>
-      </Box>
-    )}
-  </CardContent>
-</Card>
-
-      </Menu>
-    </AppBar>
         <Container maxWidth={false} sx={{ mt: 4, mb: 4, flexGrow: 1 }}>
           <Grid container spacing={3}>
             <Grid item xs={12}>
-              <Paper elevation={0} sx={{ p: 3, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+              <Paper elevation={0} sx={{ p: 3, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap', borderRadius: '16px' }}>
                 <TextField
                   label="Enter IP address"
                   variant="outlined"
@@ -699,99 +684,146 @@ const PingUI = () => {
               </Paper>
             </Grid>
             <Grid item xs={12} md={8}>
-              <Paper elevation={0} sx={{ p: 3, height: '100%' }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                  <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
-                    Monitored IPs
-                  </Typography>
-                  <FormControl sx={{ minWidth: 200 }}>
-                    <InputLabel>Filter by Category</InputLabel>
-                    <Select
-                      value={filterCategory}
-                      label="Filter by Category"
-                      onChange={(e) => setFilterCategory(e.target.value)}
-                    >
-                      <MenuItem value="all">All Categories</MenuItem>
-                      {categories.map((category) => (
-                        <MenuItem key={category.name} value={category.name}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            {iconMap[category.icon]}
-                            {category.name}
-                          </Box>
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Box>
-                {getFilteredIps().length > 0 ? (
-                  <List>
-                    {getFilteredIps().map((ip) => {
-                      const ipCategory = categories.find(cat => cat.name === ip.category);
-                      return (
-                        <ListItem
-                          key={ip.address}
-                          sx={{ mb: 2, borderRadius: 1, bgcolor: 'background.paper', boxShadow: 1 }}
-                        >
-                          <ListItemText
-                            primary={
-                              <Typography variant="h6" sx={{ fontWeight: 'medium' }}>
-                                {ip.address}
-                              </Typography>
-                            }
-                            secondary={
-                              <Box sx={{ mt: 1 }}>
-                                {ipCategory && (
-                                  <Chip
-                                    size="medium"
-                                    icon={iconMap[ipCategory.icon]}
-                                    label={ipCategory.name}
-                                    sx={{ mr: 1, fontSize: '1rem' }}
-                                  />
-                                )}
-                                {offlineTracking[ip.address] && (
-                                  <Tooltip title="Offline duration">
+              <Card>
+                <CardContent>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                    <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
+                      Monitored IPs
+                    </Typography>
+                    <FormControl sx={{ minWidth: 200 }}>
+                      <InputLabel>Filter by Category</InputLabel>
+                      <Select
+                        value={filterCategory}
+                        label="Filter by Category"
+                        onChange={(e) => setFilterCategory(e.target.value)}
+                      >
+                        <MenuItem value="all">All Categories</MenuItem>
+                        {categories.map((category) => (
+                          <MenuItem key={category.name} value={category.name}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                              {iconMap[category.icon]}
+                              {category.name}
+                            </Box>
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </Box>
+                  {getFilteredIps().length > 0 ? (
+                    <List>
+                      {getFilteredIps().map((ip) => {
+                        const ipCategory = categories.find(cat => cat.name === ip.category);
+                        const uptime = uptimeStats[ip.address] || 100;
+                        return (
+                          <ListItem
+                            key={ip.address}
+                            sx={{ mb: 2, borderRadius: '12px', bgcolor: 'background.paper', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}
+                          >
+                            <ListItemText
+                              primary={
+                                <Typography variant="h6" sx={{ fontWeight: 'medium' }}>
+                                  {ip.address}
+                                </Typography>
+                              }
+                              secondary={
+                                <Box sx={{ mt: 1 }}>
+                                  {ipCategory && (
                                     <Chip
                                       size="medium"
-                                      icon={<AccessTimeIcon />}
-                                      label={formatOfflineTime(offlineTracking[ip.address])}
-                                      color="warning"
-                                      
-                                      sx={{ mr: 1, fontSize: '1rem' }}
+                                      icon={iconMap[ipCategory.icon]}
+                                      label={ipCategory.name}
+                                      sx={{ mr: 1, fontSize: '0.875rem' }}
                                     />
-                                  </Tooltip>
-                                )}
-                              </Box>
-                            }
-                          />
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <Chip
-                              label={pingResults[ip.address] === 'active' ? 'Active' 
-                              : pingResults[ip.address] === 'inactive' ? 'Inactive' : 'Unknown'}
-                              color={pingResults[ip.address] === 'active' ? 'success'
-                              : pingResults[ip.address] === 'inactive' ? 'error' : 'default'}
-                              sx={{ fontSize: '1rem' }}
+                                  )}
+                                  {offlineTracking[ip.address] && (
+                                    <Tooltip title="Offline duration">
+                                      <Chip
+                                        size="medium"
+                                        icon={<AccessTimeIcon />}
+                                        label={formatOfflineTime(offlineTracking[ip.address])}
+                                        color="warning"
+                                        sx={{ mr: 1, fontSize: '0.875rem' }}
+                                      />
+                                    </Tooltip>
+                                  )}
+                                </Box>
+                              }
                             />
-                            <IconButton
-                              edge="end"
-                              onClick={() => removeIp(ip.address)}
-                              color="error"
-                              size="large"
-                            >
-                              <DeleteIcon />
-                            </IconButton>
-                          </Box>
-                        </ListItem>
-                      );
-                    })}
-                  </List>
-                ) : (
-                  <Box sx={{ textAlign: 'center', py: 4 }}>
-                    <Typography color="text.secondary" variant="h6">
-                      No IPs configured for this category.
-                    </Typography>
-                  </Box>
-                )}
-              </Paper>
+<Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+  <Tooltip title={`Uptime: ${uptime.toFixed(1)}%`}>
+    <Box sx={{ position: 'relative', width: 60, height: 60 }}>
+      <svg viewBox="0 0 100 100" width="60" height="60">
+        <circle
+          cx="50"
+          cy="50"
+          r="45"
+          fill="none"
+          stroke="#e0e0e0"
+          strokeWidth="8"
+        />
+        <circle
+          cx="50"
+          cy="50"
+          r="45"
+          fill="none"
+          stroke={getProgressColor(uptime)}
+          strokeWidth="8"
+          strokeLinecap="round"
+          strokeDasharray={`${2 * Math.PI * 45}`}
+          strokeDashoffset={2 * Math.PI * 45 * (1 - uptime / 100)}
+          transform="rotate(-90 50 50)"
+        />
+      </svg>
+      <Typography
+        variant="body2"
+        sx={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          fontWeight: 'bold',
+        }}
+      >
+        {uptime.toFixed(0)}%
+      </Typography>
+    </Box>
+  </Tooltip>
+  <Box sx={{ width: 80 }}> {/* Fixed width for consistent alignment */}
+    <Chip
+      label={
+        pingResults[ip.address] === 'active'
+          ? 'Active'
+          : pingResults[ip.address] === 'inactive'
+          ? 'Inactive'
+          : 'Unknown'
+      }
+      color={
+        pingResults[ip.address] === 'active'
+          ? 'success'
+          : pingResults[ip.address] === 'inactive'
+          ? 'error'
+          : 'default'
+      }
+      sx={{ fontSize: '0.875rem', width: '100%' }} 
+    />
+  </Box>
+  <IconButton edge="end" onClick={() => removeIp(ip.address)} color="error" size="large">
+    <DeleteIcon />
+  </IconButton>
+</Box>
+                          </ListItem>
+                        );
+                      })}
+                    </List>
+                  ) : (
+                    <Box sx={{ textAlign: 'center', py: 4 }}>
+                      <Typography color="text.secondary" variant="h6">
+                        No IPs configured for this category.
+                      </Typography>
+                    </Box>
+                  )}
+                </CardContent>
+              </Card>
             </Grid>
             <Grid item xs={12} md={4}>
               <Grid container spacing={3}>
@@ -803,7 +835,7 @@ const PingUI = () => {
                       </Typography>
                       <Grid container spacing={2}>
                         <Grid item xs={6}>
-                          <Paper elevation={0} sx={{ p: 2, bgcolor: 'success.light', borderRadius: 2 }}>
+                          <Paper elevation={0} sx={{ p: 2, bgcolor: 'success.light', borderRadius: '12px' }}>
                             <Typography color="success.contrastText" variant="h3" align="center">
                               {activeCount}
                             </Typography>
@@ -813,7 +845,7 @@ const PingUI = () => {
                           </Paper>
                         </Grid>
                         <Grid item xs={6}>
-                          <Paper elevation={0} sx={{ p: 2, bgcolor: 'error.light', borderRadius: 2 }}>
+                          <Paper elevation={0} sx={{ p: 2, bgcolor: 'error.light', borderRadius: '12px' }}>
                             <Typography color="error.contrastText" variant="h3" align="center">
                               {inactiveCount}
                             </Typography>
@@ -828,118 +860,78 @@ const PingUI = () => {
                 </Grid>
                 <Grid item xs={12}>
                 <Card>
-  <CardContent>
-    <Typography variant="h5" sx={{ mb: 2, fontWeight: 'bold' }}>
-      Category Statistics
-    </Typography>
-    <Grid container spacing={2}>
-      {categories.map((category) => (
-        <Grid item xs={12} key={category.name}>
-          <Paper elevation={0} sx={{ p: 2, bgcolor: 'background.default', borderRadius: 2 }}>
-            <Grid container alignItems="center" spacing={2}>
-              {/* Category Name */}
-              <Grid item xs>
-                <Typography variant="h6" sx={{ fontWeight: 'bold', fontSize: '1.25rem' }}>
-                  {category.name}
-                </Typography>
-                {/* Adjust the spacing between the name and the total */}
-                <Typography variant="body1" color="text.secondary" sx={{ mt: 1 }}>
-                  Total: {categoryStats[category.name].total}
-                </Typography>
-                <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
-                  <Chip
-                    size="medium"
-                    label={`Active: ${categoryStats[category.name].active}`}
-                    color="success"
-                    sx={{ fontSize: '1rem' }}
-                  />
-                  <Chip
-                    size="medium"
-                    label={`Inactive: ${categoryStats[category.name].inactive}`}
-                    color="error"
-                    sx={{ fontSize: '1rem' }}
-                  />
-                </Box>
-              </Grid>
-              {/* Icon placed on the right side outside the category box */}
-              <Grid item>
-                <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'center', mt: 1 }}>
-                  {React.cloneElement(iconMap[category.icon], { sx: { fontSize: '5rem', ml: 2 } })}
-                </Box>
-              </Grid>
-            </Grid>
-          </Paper>
-        </Grid>
-      ))}
-    </Grid>
-  </CardContent>
-</Card>
-
+                    <CardContent>
+                      <Typography variant="h5" sx={{ mb: 3, fontWeight: 'bold' }}>
+                        Category Statistics
+                      </Typography>
+                      {Object.entries(categoryStats).map(([category, stats]) => (
+                        <Box key={category} sx={{ mb: 3, last: { mb: 0 } }}>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                            <Typography variant="subtitle1" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                              {iconMap[stats.icon]}
+                              {category}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              Total: {stats.total}
+                            </Typography>
+                          </Box>
+                          <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                            <LinearProgress
+                              variant="determinate"
+                              value={(stats.active / stats.total) * 100}
+                              sx={{
+                                flexGrow: 1,
+                                height: 8,
+                                borderRadius: 4,
+                                backgroundColor: 'error.light',
+                                '& .MuiLinearProgress-bar': {
+                                  backgroundColor: 'success.main',
+                                },
+                              }}
+                            />
+                          </Box>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <Typography variant="body2" color="success.main">
+                              Active: {stats.active}
+                            </Typography>
+                            <Typography variant="body2" color="error.main">
+                              Inactive: {stats.inactive}
+                            </Typography>
+                          </Box>
+                        </Box>
+                      ))}
+                    </CardContent>
+                  </Card>
                 </Grid>
-                {inactiveIps.length > 0 && (
-                  <Grid item xs={12}>
-                    <Card>
-                      <CardContent>
-                        <Typography variant="h5" sx={{ mb: 2, fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <WarningIcon color="warning" />
-                          Offline Devices
-                        </Typography>
-                        <List>
-                          {inactiveIps.map((ip) => (
-                            <ListItem key={ip} sx={{ px: 0 }}>
-                              <ListItemText
-                                primary={<Typography variant="h6">{ip}</Typography>}
-                                secondary={
-                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
-                                    <AccessTimeIcon fontSize="small" color="action" />
-                                    <Typography variant="body1">
-                                      Offline since: {formatOfflineTime(offlineTracking[ip] || Date.now())}
-                                    </Typography>
-                                  </Box>
-                                }
-                              />
-                            </ListItem>
-                          ))}
-                        </List>
-                      </CardContent>
-                    </Card>
-                  </Grid>
-                )}
               </Grid>
             </Grid>
           </Grid>
         </Container>
       </Box>
 
-      <Dialog 
-        open={openCategoryDialog} 
-        onClose={() => setOpenCategoryDialog(false)}
-        maxWidth="sm"
-        fullWidth
-      >
+      <Dialog open={openCategoryDialog} onClose={() => setOpenCategoryDialog(false)}>
         <DialogTitle>Manage Categories</DialogTitle>
         <DialogContent>
-          <Box sx={{ mb: 3, mt: 2 }}>
+          <Box sx={{ mb: 2 }}>
             <TextField
-              fullWidth
               label="New Category Name"
               value={newCategory}
               onChange={(e) => setNewCategory(e.target.value)}
-              variant="outlined"
-              sx={{ mb: 2 }}
+              fullWidth
+              margin="normal"
             />
-            <FormControl fullWidth sx={{ mb: 2 }}>
+            <FormControl fullWidth margin="normal">
               <InputLabel>Icon</InputLabel>
               <Select
                 value={newCategoryIcon}
-                label="Icon"
                 onChange={(e) => setNewCategoryIcon(e.target.value)}
+                label="Icon"
               >
-                {availableIcons.map((iconOption) => (
-                  <MenuItem key={iconOption.value} value={iconOption.value}>
+                {availableIcons.map((icon) => (
+                  <MenuItem key={icon.value} value={icon.value}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      {iconMap[iconOption.value]}
-                      {iconOption.label}
+                      {iconMap[icon.value]}
+                      {icon.label}
                     </Box>
                   </MenuItem>
                 ))}
@@ -948,24 +940,20 @@ const PingUI = () => {
             <Button
               variant="contained"
               onClick={addCategory}
-              startIcon={<AddCircleIcon />}
-              size="large"
+              fullWidth
+              sx={{ mt: 2 }}
             >
               Add Category
             </Button>
           </Box>
           <Divider sx={{ my: 2 }} />
+          <Typography variant="h6" sx={{ mb: 2 }}>Existing Categories</Typography>
           <List>
             {categories.map((category) => (
               <ListItem
                 key={category.name}
                 secondaryAction={
-                  <IconButton
-                    edge="end"
-                    onClick={() => removeCategory(category.name)}
-                    disabled={ips.some(ip => ip.category === category.name)}
-                    size="large"
-                  >
+                  <IconButton edge="end" onClick={() => removeCategory(category.name)}>
                     <DeleteIcon />
                   </IconButton>
                 }
@@ -974,31 +962,26 @@ const PingUI = () => {
                   primary={
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                       {iconMap[category.icon]}
-                      <Typography variant="h6">{category.name}</Typography>
+                      {category.name}
                     </Box>
                   }
-                  secondary={ips.some(ip => ip.category === category.name) ? 'In use' : 'Not in use'}
                 />
               </ListItem>
             ))}
           </List>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenCategoryDialog(false)} size="large">Close</Button>
+          <Button onClick={() => setOpenCategoryDialog(false)}>Close</Button>
         </DialogActions>
       </Dialog>
 
       <Snackbar
         open={openSnackbar}
-        autoHideDuration={3000}
+        autoHideDuration={6000}
         onClose={() => setOpenSnackbar(false)}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
-        <Alert 
-          onClose={() => setOpenSnackbar(false)} 
-          severity={snackbarSeverity}
-          variant="filled"
-        >
+        <Alert onClose={() => setOpenSnackbar(false)} severity={snackbarSeverity} sx={{ width: '100%' }}>
           {snackbarMessage}
         </Alert>
       </Snackbar>
