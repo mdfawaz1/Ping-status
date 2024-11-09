@@ -524,7 +524,7 @@ const PingUI = () => {
           <Toolbar>
             {/* <CloudIcon sx={{ mr: 2 }} /> */}
             <Typography variant="h4" component="div" sx={{ flexGrow: 1, fontWeight: 700 }}>
-              Network Insights
+              IP status
             </Typography>
             {/* <Button
               color="inherit"
