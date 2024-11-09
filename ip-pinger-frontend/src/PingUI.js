@@ -175,9 +175,15 @@ const PingUI = () => {
   const [openCategoryDialog, setOpenCategoryDialog] = useState(false);
   const [newCategory, setNewCategory] = useState('');
   const [newCategoryIcon, setNewCategoryIcon] = useState('');
-  const [darkMode, setDarkMode] = useState(false);
+  const [darkMode, setDarkMode] = useState(() => {
+      const storedThemePreference = localStorage.getItem('darkMode');
+      return storedThemePreference ? JSON.parse(storedThemePreference) : false;
+    });
 
   const isMobile = useMediaQuery(lightTheme.breakpoints.down('sm'));
+  useEffect(() => {
+    localStorage.setItem('darkMode', JSON.stringify(darkMode));
+  }, [darkMode]);
 
   useEffect(() => {
     localStorage.setItem('myAppIpData', JSON.stringify(ips));
@@ -520,7 +526,7 @@ const PingUI = () => {
             <Typography variant="h4" component="div" sx={{ flexGrow: 1, fontWeight: 700 }}>
               Network Insights
             </Typography>
-            <Button
+            {/* <Button
               color="inherit"
               component={RouterLink}
               to="/home"
@@ -528,7 +534,7 @@ const PingUI = () => {
               sx={{ mx: 2, fontWeight: 500 }}
             >
               Ping UI
-            </Button>
+            </Button> */}
             <Button
               color="inherit"
               component={RouterLink}
@@ -536,7 +542,7 @@ const PingUI = () => {
               size="large"
               sx={{ mx: 2, fontWeight: 500 }}
             >
-              Image Drop Zone
+Aerial view
             </Button>
             <Button
               color="inherit"
