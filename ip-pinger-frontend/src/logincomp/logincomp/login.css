@@ -1,0 +1,10 @@
+.logo {
+    width: 250px; /* Adjust the size as needed */
+    height: auto;
+  }
+
+  .login-button {
+    height: 3rem;
+    border-radius: 2rem;
+    margin-top: 1rem;
+  }
