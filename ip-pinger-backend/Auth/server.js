@@ -9,7 +9,7 @@ const app = express();
 // Environment variables
 const JWT_SECRET = 'your-secret-key-here';
 const MONGODB_URI = 'mongodb://localhost:27017/auth_db';
-const SESSION_DURATION = 5 * 60 * 1000; // 5 minutes in milliseconds
+const SESSION_DURATION = 365 * 24 * 60 * 60 * 1000; // 365 days in milliseconds
 
 // Middleware
 app.use(express.json());
