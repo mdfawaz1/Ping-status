@@ -58,6 +58,7 @@ import {
   BugReport as BugReportIcon,
 } from '@mui/icons-material';
 import { Link as RouterLink } from 'react-router-dom';
+import logo from './cable.png';
 
 const lightTheme = createTheme({
   palette: {
@@ -539,7 +540,18 @@ const PingUI = () => {
       <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
         <AppBar position="static" color="primary" elevation={0}>
           <Toolbar>
-            {/* <CloudIcon sx={{ mr: 2 }} /> */}
+          <img
+      src={logo}
+      alt="Logo"
+      style={{
+        width: '50px',
+        height: '50px',
+        marginRight: '15px',
+        marginTop: '5px',
+        marginBottom: '-10px',
+        filter: 'brightness(0) invert(1)', // Makes the image white
+      }}
+    />
             <Typography variant="h4" component="div" sx={{ flexGrow: 1, fontWeight: 700 }}>
               Network Insights
             </Typography>
@@ -710,160 +722,153 @@ Aerial view
               </Paper>
             </Grid>
             <Grid item xs={12} md={8}>
-              <Card>
-                <CardContent>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                    <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
-                      Monitored IPs
+            <Card>
+  <CardContent>
+    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+      <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
+        Monitored IPs
+      </Typography>
+      <FormControl sx={{ minWidth: 200 }}>
+        <InputLabel>Filter by</InputLabel>
+        <Select
+          value={filterCategory}
+          label="Filter by"
+          onChange={(e) => setFilterCategory(e.target.value)}
+        >
+          <MenuItem value="all">All IPs</MenuItem>
+          {categories.map((category) => (
+            <MenuItem key={category.name} value={category.name}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                {iconMap[category.icon]}
+                {category.name}
+              </Box>
+            </MenuItem>
+          ))}
+        </Select>
+      </FormControl>
+      <FormControl sx={{ minWidth: 200, ml: 2 }}>
+        <InputLabel>Filter by Status</InputLabel>
+        <Select
+          value={filterStatus}
+          label="Filter by Status"
+          onChange={(e) => setFilterStatus(e.target.value)}
+        >
+          <MenuItem value="all">All Status</MenuItem>
+          <MenuItem value="active">Active</MenuItem>
+          <MenuItem value="inactive">Inactive</MenuItem>
+        </Select>
+      </FormControl>
+    </Box>
+    <Box sx={{ height: 496, overflowY: 'auto' }}> {/* Fixed height set here */}
+      {getFilteredIps().length > 0 ? (
+        <List>
+          {getFilteredIps().map((ip) => {
+            const ipCategory = categories.find(cat => cat.name === ip.category);
+            const uptime = uptimeStats[ip.address] || 100;
+            return (
+              <ListItem
+                key={ip.address}
+                sx={{ mb: 2, borderRadius: '12px', bgcolor: 'background.paper', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}
+              >
+                <ListItemText
+                  primary={
+                    <Typography variant="h6" sx={{ fontWeight: 'medium' }}>
+                      {ip.address}
                     </Typography>
-                    <FormControl sx={{ minWidth: 200 }}>
-                      <InputLabel>Filter by</InputLabel>
-                      <Select
-                        value={filterCategory}
-                        label="Filter by"
-                        onChange={(e) => setFilterCategory(e.target.value)}
+                  }
+                  secondary={
+                    <Box sx={{ mt: 1 }}>
+                      {ipCategory && (
+                        <Chip
+                          size="medium"
+                          icon={iconMap[ipCategory.icon]}
+                          label={ipCategory.name}
+                          sx={{ mr: 1, fontSize: '0.875rem' }}
+                        />
+                      )}
+                      {offlineTracking[ip.address] && (
+                        <Tooltip title="Offline duration">
+                          <Chip
+                            size="medium"
+                            icon={<AccessTimeIcon />}
+                            label={formatOfflineTime(offlineTracking[ip.address])}
+                            color="warning"
+                            sx={{ mr: 1, fontSize: '0.875rem' }}
+                          />
+                        </Tooltip>
+                      )}
+                    </Box>
+                  }
+                />
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                  <Tooltip title={`Uptime: ${uptime.toFixed(1)}%`}>
+                    <Box sx={{ position: 'relative', width: 60, height: 60 }}>
+                      <svg viewBox="0 0 100 100" width="60" height="60">
+                        <circle cx="50" cy="50" r="45" fill="none" stroke="#e0e0e0" strokeWidth="8" />
+                        <circle
+                          cx="50"
+                          cy="50"
+                          r="45"
+                          fill="none"
+                          stroke={getProgressColor(uptime)}
+                          strokeWidth="8"
+                          strokeLinecap="round"
+                          strokeDasharray={`${2 * Math.PI * 45}`}
+                          strokeDashoffset={2 * Math.PI * 45 * (1 - uptime / 100)}
+                          transform="rotate(-90 50 50)"
+                        />
+                      </svg>
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          position: 'absolute',
+                          top: '50%',
+                          left: '50%',
+                          transform: 'translate(-50%, -50%)',
+                          fontWeight: 'bold',
+                        }}
                       >
-                        <MenuItem value="all">All IPs</MenuItem>
-                        {/* <MenuItem value="active">Active IPs</MenuItem> */}
-                        {/* <MenuItem value="inactive">Inactive IPs</MenuItem> */}
-                        {categories.map((category) => (
-                          <MenuItem key={category.name} value={category.name}>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                              {iconMap[category.icon]}
-                              {category.name}
-                            </Box>
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
-                      <FormControl sx={{ minWidth: 200, ml: 2 }}>
-                      <InputLabel>Filter by Status</InputLabel>
-                      <Select
-                      value={filterStatus}
-                       label="Filter by Status"
-                       onChange={(e) => setFilterStatus(e.target.value)}
-                      >
-                      <MenuItem value="all">All Status</MenuItem>
-                      <MenuItem value="active">Active</MenuItem>
-                      <MenuItem value="inactive">Inactive</MenuItem>
-                      </Select>
-                    </FormControl>
-                  </Box>
-                  {getFilteredIps().length > 0 ? (
-                    <List>
-                      {getFilteredIps().map((ip) => {
-                        const ipCategory = categories.find(cat => cat.name === ip.category);
-                        const uptime = uptimeStats[ip.address] || 100;
-                        return (
-                          <ListItem
-                            key={ip.address}
-                            sx={{ mb: 2, borderRadius: '12px', bgcolor: 'background.paper', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}
-                          >
-                            <ListItemText
-                              primary={
-                                <Typography variant="h6" sx={{ fontWeight: 'medium' }}>
-                                  {ip.address}
-                                </Typography>
-                              }
-                              secondary={
-                                <Box sx={{ mt: 1 }}>
-                                  {ipCategory && (
-                                    <Chip
-                                      size="medium"
-                                      icon={iconMap[ipCategory.icon]}
-                                      label={ipCategory.name}
-                                      sx={{ mr: 1, fontSize: '0.875rem' }}
-                                    />
-                                  )}
-                                  {offlineTracking[ip.address] && (
-                                    <Tooltip title="Offline duration">
-                                      <Chip
-                                        size="medium"
-                                        icon={<AccessTimeIcon />}
-                                        label={formatOfflineTime(offlineTracking[ip.address])}
-                                        color="warning"
-                                        sx={{ mr: 1, fontSize: '0.875rem' }}
-                                      />
-                                    </Tooltip>
-                                  )}
-                                </Box>
-                              }
-                            />
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                              <Tooltip title={`Uptime: ${uptime.toFixed(1)}%`}>
-                                <Box sx={{ position: 'relative', width: 60, height: 60 }}>
-                                  <svg viewBox="0 0 100 100" width="60" height="60">
-                                    <circle
-                                      cx="50"
-                                      cy="50"
-                                      r="45"
-                                      fill="none"
-                                      stroke="#e0e0e0"
-                                      strokeWidth="8"
-                                    />
-                                    <circle
-                                      cx="50"
-                                      cy="50"
-                                      r="45"
-                                      fill="none"
-                                      stroke={getProgressColor(uptime)}
-                                      strokeWidth="8"
-                                      strokeLinecap="round"
-                                      strokeDasharray={`${2 * Math.PI * 45}`}
-                                      strokeDashoffset={2 * Math.PI * 45 * (1 - uptime / 100)}
-                                      transform="rotate(-90 50 50)"
-                                    />
-                                  </svg>
-                                  <Typography
-                                    variant="body2"
-                                    sx={{
-                                      position: 'absolute',
-                                      top: '50%',
-                                      left: '50%',
-                                      transform: 'translate(-50%, -50%)',
-                                      fontWeight: 'bold',
-                                    }}
-                                  >
-                                    {uptime.toFixed(0)}%
-                                  </Typography>
-                                </Box>
-                              </Tooltip>
-                              <Box sx={{ width: 80 }}>
-                                <Chip
-                                  label={
-                                    pingResults[ip.address] === 'active'
-                                      ? 'Active'
-                                      : pingResults[ip.address] === 'inactive'
-                                        ? 'Inactive'
-                                        : 'Unknown'
-                                  }
-                                  color={
-                                    pingResults[ip.address] === 'active'
-                                      ? 'success'
-                                      : pingResults[ip.address] === 'inactive'
-                                        ? 'error'
-                                        : 'default'
-                                  }
-                                  sx={{ fontSize: '0.875rem', width: '100%' }}
-                                />
-                              </Box>
-                              <IconButton edge="end" onClick={() => removeIp(ip.address)} color="error" size="large">
-                                <DeleteIcon />
-                              </IconButton>
-                            </Box>
-                          </ListItem>
-                        );
-                      })}
-                    </List>
-                  ) : (
-                    <Box sx={{ textAlign: 'center', py: 4 }}>
-                      <Typography color="text.secondary" variant="h6">
-                        No IPs configured for this category.
+                        {uptime.toFixed(0)}%
                       </Typography>
                     </Box>
-                  )}
-                </CardContent>
-              </Card>
+                  </Tooltip>
+                  <Box sx={{ width: 80 }}>
+                    <Chip
+                      label={
+                        pingResults[ip.address] === 'active'
+                          ? 'Active'
+                          : pingResults[ip.address] === 'inactive'
+                            ? 'Inactive'
+                            : 'Unknown'
+                      }
+                      color={
+                        pingResults[ip.address] === 'active'
+                          ? 'success'
+                          : pingResults[ip.address] === 'inactive'
+                            ? 'error'
+                            : 'default'
+                      }
+                      sx={{ fontSize: '0.875rem', width: '100%' }}
+                    />
+                  </Box>
+                  <IconButton edge="end" onClick={() => removeIp(ip.address)} color="error" size="large">
+                    <DeleteIcon />
+                  </IconButton>
+                </Box>
+              </ListItem>
+            );
+          })}
+        </List>
+      ) : (
+        <Box sx={{ textAlign: 'center', py: 4 }}>
+          <Typography color="text.secondary" variant="h6">
+            No IPs configured for this category.
+          </Typography>
+        </Box>
+      )}
+    </Box>
+  </CardContent>
+</Card>
             </Grid>
             <Grid item xs={12} md={4}>
               <Grid container spacing={3}>
