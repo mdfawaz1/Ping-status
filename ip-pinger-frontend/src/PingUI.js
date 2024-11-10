@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect ,useCallback,useRef} from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -56,6 +56,7 @@ import {
   Build as BuildIcon,
   Code as CodeIcon,
   BugReport as BugReportIcon,
+  CloudDownload,Visibility
 } from '@mui/icons-material';
 import { Link as RouterLink } from 'react-router-dom';
 import logo from './cable.png';
@@ -176,7 +177,11 @@ const PingUI = () => {
   const [uptimeStats, setUptimeStats] = useState({});
   const [openCategoryDialog, setOpenCategoryDialog] = useState(false);
   const [newCategory, setNewCategory] = useState('');
+  const [logs, setLogs] = useState([]);
+  const [openLogsDialog, setOpenLogsDialog] = useState(false);
   const [newCategoryIcon, setNewCategoryIcon] = useState('');
+  const ipStatusHistoryRef = useRef({});
+  const pingIntervalRef = useRef(null);
   const [darkMode, setDarkMode] = useState(() => {
       const storedThemePreference = localStorage.getItem('darkMode');
       return storedThemePreference ? JSON.parse(storedThemePreference) : false;
@@ -403,50 +408,136 @@ const PingUI = () => {
     });
   };
 
-  const pingIps = async () => {
-    let active = 0;
-    let inactive = 0;
-    let inactiveIpList = [];
+  const addLogEntry = useCallback((ip, newStatus, oldStatus) => {
+    const timestamp = new Date().toISOString();
+    const logEntry = `${timestamp} - IP: ${ip} - Status changed from ${oldStatus} to ${newStatus}`;
+    setLogs(prevLogs => [...prevLogs, logEntry]);
+  }, []);
 
-    if (ips.length === 0) {
-      setActiveCount(0);
-      setInactiveCount(0);
-      setInactiveIps([]);
-      setPingResults({});
-      setOfflineTracking({});
-      return;
-    }
+const pingIps = useCallback(async () => {
+  // Add a console log to track when pinging occurs
+  console.log('Pinging IPs at:', new Date().toISOString());
+  
+  let active = 0;
+  let inactive = 0;
+  let inactiveIpList = [];
 
-    try {
-      const response = await axios.get(`http://localhost:8080/ping`, {
-        params: { ips: ips.map(ip => ip.address).join(',') },
-      });
-      const results = response.data;
-      console.log("Res", results);
-      setPingResults(results);
+  if (ips.length === 0) {
+    setActiveCount(0);
+    setInactiveCount(0);
+    setInactiveIps([]);
+    setPingResults({});
+    setOfflineTracking({});
+    return;
+  }
 
-      for (const [ip, status] of Object.entries(results)) {
-        const isActive = status === 'active';
-        updateOfflineTracking(ip, isActive);
-        updateUptimeStats(ip, isActive);
+  try {
+    const response = await axios.get(`http://localhost:8080/ping`, {
+      params: { ips: ips.map(ip => ip.address).join(',') },
+    });
+    const results = response.data;
+    setPingResults(results);
 
-        if (isActive) {
-          active++;
-        } else {
-          inactive++;
-          inactiveIpList.push(ip);
-        }
+    for (const [ip, status] of Object.entries(results)) {
+      const isActive = status === 'active';
+      const previousStatus = ipStatusHistoryRef.current[ip];
+      
+      updateOfflineTracking(ip, isActive);
+      updateUptimeStats(ip, isActive);
+      
+      if (previousStatus !== status) {
+        addLogEntry(ip, status, previousStatus || 'unknown');
+        ipStatusHistoryRef.current = { ...ipStatusHistoryRef.current, [ip]: status };
       }
-    } catch (error) {
-      console.error('Error pinging IPs:', error);
-      showSnackbar('Error pinging IPs', 'error');
-    }
 
-    setActiveCount(active);
-    setInactiveCount(inactive);
-    setInactiveIps(inactiveIpList);
+      if (isActive) {
+        active++;
+      } else {
+        inactive++;
+        inactiveIpList.push(ip);
+      }
+    }
+  } catch (error) {
+    console.error('Error pinging IPs:', error);
+    showSnackbar('Error pinging IPs', 'error');
+  }
+
+  setActiveCount(active);
+  setInactiveCount(inactive);
+  setInactiveIps(inactiveIpList);
+}, [addLogEntry, updateOfflineTracking, updateUptimeStats, showSnackbar]); // Remove 'ips' from dependencies
+
+// Then, modify the useEffect to properly handle the interval
+useEffect(() => {
+  // Clear any existing interval first
+  if (pingIntervalRef.current) {
+    clearInterval(pingIntervalRef.current);
+    pingIntervalRef.current = null;
+  }
+
+  // Only set up pinging if there are IPs to ping
+  if (ips.length > 0) {
+    // Initial ping
+    pingIps();
+
+    // Set up the interval
+    const interval = setInterval(() => {
+      pingIps();
+    }, 20000);
+
+    // Store the interval ID in the ref
+    pingIntervalRef.current = interval;
+
+    // Cleanup function
+    return () => {
+      if (pingIntervalRef.current) {
+        clearInterval(pingIntervalRef.current);
+        pingIntervalRef.current = null;
+      }
+    };
+  } else {
+    // Reset states when there are no IPs
+    setActiveCount(0);
+    setInactiveCount(0);
+    setInactiveIps([]);
+    setPingResults({});
+    setOfflineTracking({});
+    ipStatusHistoryRef.current = {};
+  }
+}, [ips]); 
+  
+
+  const downloadLogs = () => {
+    const blob = new Blob([logs.join('\n')], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'network_logs.txt';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
+  const LogsDialog = () => (
+    <Dialog open={openLogsDialog} onClose={() => setOpenLogsDialog(false)} maxWidth="md" fullWidth>
+      <DialogTitle>Network Activity Logs</DialogTitle>
+      <DialogContent>
+        <List sx={{ maxHeight: 400, overflow: 'auto' }}>
+          {logs.map((log, index) => (
+            <ListItem key={index}>
+              <ListItemText primary={log} />
+            </ListItem>
+          ))}
+        </List>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={downloadLogs} startIcon={<CloudDownload />}>
+          Download Logs
+        </Button>
+        <Button onClick={() => setOpenLogsDialog(false)}>Close</Button>
+      </DialogActions>
+    </Dialog>
+  );
   const [editMode, setEditMode] = useState(false);
   const [userName, setUserName] = useState(localStorage.getItem('userName') || 'User Name');
   const [userLogo, setUserLogo] = useState(localStorage.getItem('userLogo') || 'https://via.placeholder.com/100');
@@ -487,19 +578,19 @@ const PingUI = () => {
     setEditMode(false);
   };
 
-  useEffect(() => {
-    if (ips.length > 0) {
-      pingIps();
-      const interval = setInterval(pingIps, 20000);
-      return () => clearInterval(interval);
-    } else {
-      setActiveCount(0);
-      setInactiveCount(0);
-      setInactiveIps([]);
-      setPingResults({});
-      setOfflineTracking({});
-    }
-  }, [ips]);
+  // useEffect(() => {
+  //   if (ips.length > 0) {
+  //     pingIps();
+  //     const interval = setInterval(pingIps, 20000);
+  //     return () => clearInterval(interval);
+  //   } else {
+  //     setActiveCount(0);
+  //     setInactiveCount(0);
+  //     setInactiveIps([]);
+  //     setPingResults({});
+  //     setOfflineTracking({});
+  //   }
+  // }, [ips]);
 
   const handleFileUpload = (event) => {
     const file = event.target.files[0];
@@ -953,6 +1044,29 @@ Aerial view
           </Grid>
         </Container>
       </Box>
+      <Grid item xs={12}>
+        <Card>
+          <CardContent>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+              <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
+                Network Activity Logs
+              </Typography>
+              <Box>
+                <IconButton onClick={() => setOpenLogsDialog(true)} color="primary">
+                  <Visibility />
+                </IconButton>
+                <IconButton onClick={downloadLogs} color="primary">
+                  <CloudDownload />
+                </IconButton>
+              </Box>
+            </Box>
+            <Typography variant="body2" color="text.secondary">
+              {`Total log entries: ${logs.length}`}
+            </Typography>
+          </CardContent>
+          <LogsDialog />
+        </Card>
+      </Grid>
 
       <Dialog open={openCategoryDialog} onClose={() => setOpenCategoryDialog(false)}>
         <DialogTitle>Manage Categories</DialogTitle>
