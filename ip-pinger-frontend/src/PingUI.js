@@ -164,6 +164,7 @@ const PingUI = () => {
   const [newIp, setNewIp] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [filterCategory, setFilterCategory] = useState('all');
+  const [filterStatus, setFilterStatus] = useState('all');
   const [activeCount, setActiveCount] = useState(0);
   const [inactiveCount, setInactiveCount] = useState(0);
   const [inactiveIps, setInactiveIps] = useState([]);
@@ -269,10 +270,26 @@ const PingUI = () => {
   };
 
   const getFilteredIps = () => {
-    if (filterCategory === 'all') return ips;
-    if (filterCategory === 'active') return ips.filter(ip => pingResults[ip.address] === 'active');
-    if (filterCategory === 'inactive') return ips.filter(ip => pingResults[ip.address] === 'inactive');
-    return ips.filter(ip => ip.category === filterCategory);
+    return ips.filter((ip) => {
+      // First check category
+      if (filterCategory !== 'all') {
+        if (filterCategory === 'active') {
+          if (pingResults[ip.address] !== 'active') return false;
+        } else if (filterCategory === 'inactive') {
+          if (pingResults[ip.address] !== 'inactive') return false;
+        } else if (ip.category !== filterCategory) {
+          return false;
+        }
+      }
+  
+      // Then check status
+      if (filterStatus !== 'all') {
+        if (filterStatus === 'active' && pingResults[ip.address] !== 'active') return false;
+        if (filterStatus === 'inactive' && pingResults[ip.address] !== 'inactive') return false;
+      }
+  
+      return true;
+    });
   };
 
   const formatOfflineTime = (startTime) => {
@@ -707,8 +724,8 @@ Aerial view
                         onChange={(e) => setFilterCategory(e.target.value)}
                       >
                         <MenuItem value="all">All IPs</MenuItem>
-                        <MenuItem value="active">Active IPs</MenuItem>
-                        <MenuItem value="inactive">Inactive IPs</MenuItem>
+                        {/* <MenuItem value="active">Active IPs</MenuItem> */}
+                        {/* <MenuItem value="inactive">Inactive IPs</MenuItem> */}
                         {categories.map((category) => (
                           <MenuItem key={category.name} value={category.name}>
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -717,6 +734,18 @@ Aerial view
                             </Box>
                           </MenuItem>
                         ))}
+                      </Select>
+                    </FormControl>
+                      <FormControl sx={{ minWidth: 200, ml: 2 }}>
+                      <InputLabel>Filter by Status</InputLabel>
+                      <Select
+                      value={filterStatus}
+                       label="Filter by Status"
+                       onChange={(e) => setFilterStatus(e.target.value)}
+                      >
+                      <MenuItem value="all">All Status</MenuItem>
+                      <MenuItem value="active">Active</MenuItem>
+                      <MenuItem value="inactive">Inactive</MenuItem>
                       </Select>
                     </FormControl>
                   </Box>
