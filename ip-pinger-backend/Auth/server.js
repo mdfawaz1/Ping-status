@@ -145,7 +145,7 @@ app.post('/auth/login', async (req, res) => {
     const token = jwt.sign(
       { userId: user._id, username: user.username },
       JWT_SECRET,
-      { expiresIn: '5m' }
+      { expiresIn: '365d' }
     );
 
     // Create new session
