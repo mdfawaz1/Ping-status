@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect ,useCallback,useRef} from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -39,6 +39,9 @@ import {
   LinearProgress,
   Avatar,
   Switch,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails
 } from '@mui/material';
 import {
   Person as PersonIcon,
@@ -56,6 +59,7 @@ import {
   Build as BuildIcon,
   Code as CodeIcon,
   BugReport as BugReportIcon,
+  CloudDownload,Visibility,Delete,ExpandMore 
 } from '@mui/icons-material';
 import { Link as RouterLink } from 'react-router-dom';
 import logo from './cable.png';
@@ -176,12 +180,23 @@ const PingUI = () => {
   const [uptimeStats, setUptimeStats] = useState({});
   const [openCategoryDialog, setOpenCategoryDialog] = useState(false);
   const [newCategory, setNewCategory] = useState('');
+  const [logs, setLogs] = useState([]);
+  const [openLogsDialog, setOpenLogsDialog] = useState(false);
   const [newCategoryIcon, setNewCategoryIcon] = useState('');
+  const ipStatusHistoryRef = useRef({});
+  const pingIntervalRef = useRef(null);
   const [darkMode, setDarkMode] = useState(() => {
       const storedThemePreference = localStorage.getItem('darkMode');
       return storedThemePreference ? JSON.parse(storedThemePreference) : false;
     });
-
+    const [logsEnabled, setLogsEnabled] = useState(() => {
+      const stored = localStorage.getItem('logsEnabled');
+      return stored ? JSON.parse(stored) : true; // Enable logs by default
+    });
+    // Add useEffect to persist logs enabled preference
+    useEffect(() => {
+      localStorage.setItem('logsEnabled', JSON.stringify(logsEnabled));
+    }, [logsEnabled]);
   const isMobile = useMediaQuery(lightTheme.breakpoints.down('sm'));
   useEffect(() => {
     localStorage.setItem('darkMode', JSON.stringify(darkMode));
@@ -403,50 +418,208 @@ const PingUI = () => {
     });
   };
 
-  const pingIps = async () => {
-    let active = 0;
-    let inactive = 0;
-    let inactiveIpList = [];
-
-    if (ips.length === 0) {
-      setActiveCount(0);
-      setInactiveCount(0);
-      setInactiveIps([]);
-      setPingResults({});
-      setOfflineTracking({});
-      return;
-    }
-
-    try {
-      const response = await axios.get(`http://localhost:8080/ping`, {
-        params: { ips: ips.map(ip => ip.address).join(',') },
-      });
-      const results = response.data;
-      console.log("Res", results);
-      setPingResults(results);
-
-      for (const [ip, status] of Object.entries(results)) {
-        const isActive = status === 'active';
-        updateOfflineTracking(ip, isActive);
-        updateUptimeStats(ip, isActive);
-
-        if (isActive) {
-          active++;
-        } else {
-          inactive++;
-          inactiveIpList.push(ip);
-        }
-      }
-    } catch (error) {
-      console.error('Error pinging IPs:', error);
-      showSnackbar('Error pinging IPs', 'error');
-    }
-
-    setActiveCount(active);
-    setInactiveCount(inactive);
-    setInactiveIps(inactiveIpList);
+  const addLogEntry = useCallback((ip, newStatus, oldStatus) => {
+    if (!logsEnabled) return; // Skip logging if disabled
+    
+    const timestamp = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+    const logEntry = `${timestamp} - IP: ${ip} - Status changed from ${oldStatus} to ${newStatus}`;
+    setLogs(prevLogs => [...prevLogs, logEntry]);
+  }, [logsEnabled]); // Add logsEnabled to dependencies
+  const clearLogs = () => {
+    setLogs([]); // Clear logs by setting an empty array
   };
 
+const pingIps = useCallback(async () => {
+  // Add a console log to track when pinging occurs
+  console.log('Pinging IPs at:', new Date().toISOString());
+  
+  let active = 0;
+  let inactive = 0;
+  let inactiveIpList = [];
+
+  if (ips.length === 0) {
+    setActiveCount(0);
+    setInactiveCount(0);
+    setInactiveIps([]);
+    setPingResults({});
+    setOfflineTracking({});
+    return;
+  }
+
+  try {
+    const response = await axios.get(`http://localhost:8080/ping`, {
+      params: { ips: ips.map(ip => ip.address).join(',') },
+    });
+    const results = response.data;
+    setPingResults(results);
+
+    for (const [ip, status] of Object.entries(results)) {
+      const isActive = status === 'active';
+      const previousStatus = ipStatusHistoryRef.current[ip];
+      
+      updateOfflineTracking(ip, isActive);
+      updateUptimeStats(ip, isActive);
+      
+      if (previousStatus !== status) {
+        addLogEntry(ip, status, previousStatus || 'unknown');
+        ipStatusHistoryRef.current = { ...ipStatusHistoryRef.current, [ip]: status };
+      }
+
+      if (isActive) {
+        active++;
+      } else {
+        inactive++;
+        inactiveIpList.push(ip);
+      }
+    }
+  } catch (error) {
+    console.error('Error pinging IPs:', error);
+    showSnackbar('Error pinging IPs', 'error');
+  }
+
+  setActiveCount(active);
+  setInactiveCount(inactive);
+  setInactiveIps(inactiveIpList);
+}, [addLogEntry, updateOfflineTracking, updateUptimeStats, showSnackbar]); // Remove 'ips' from dependencies
+
+// Then, modify the useEffect to properly handle the interval
+useEffect(() => {
+  // Clear any existing interval first
+  if (pingIntervalRef.current) {
+    clearInterval(pingIntervalRef.current);
+    pingIntervalRef.current = null;
+  }
+
+  // Only set up pinging if there are IPs to ping
+  if (ips.length > 0) {
+    // Initial ping
+    pingIps();
+
+    // Set up the interval
+    const interval = setInterval(() => {
+      pingIps();
+    }, 20000);
+
+    // Store the interval ID in the ref
+    pingIntervalRef.current = interval;
+
+    // Cleanup function
+    return () => {
+      if (pingIntervalRef.current) {
+        clearInterval(pingIntervalRef.current);
+        pingIntervalRef.current = null;
+      }
+    };
+  } else {
+    // Reset states when there are no IPs
+    setActiveCount(0);
+    setInactiveCount(0);
+    setInactiveIps([]);
+    setPingResults({});
+    setOfflineTracking({});
+    ipStatusHistoryRef.current = {};
+  }
+}, [ips]); 
+  
+
+  const downloadLogs = () => {
+    const blob = new Blob([logs.join('\n')], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'network_logs.txt';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const LogsDialog = () => (
+    <Dialog
+      open={openLogsDialog}
+      onClose={() => setOpenLogsDialog(false)}
+      maxWidth="md"
+      fullWidth
+      sx={{
+        '& .MuiDialog-paper': {
+          backgroundColor: '#1e1e1e',
+          borderRadius: '8px',
+          boxShadow: '0px 4px 20px rgba(0, 0, 0, 0.5)',
+        },
+      }}
+    >
+      <DialogTitle sx={{ fontWeight: '600', fontSize: '1.25rem', color: '#ffffff' }}>Network Activity Logs</DialogTitle>
+      <DialogContent
+        sx={{
+          padding: '16px',
+          backgroundColor: '#2c2c2c',
+          borderRadius: '8px',
+          maxHeight: 400,
+          overflow: 'auto',
+        }}
+      >
+        <List sx={{ 
+          padding: 0, 
+          maxHeight: 400, 
+          overflow: 'auto', 
+          '&::-webkit-scrollbar': { width: '6px' }, 
+          '&::-webkit-scrollbar-thumb': { backgroundColor: '#555', borderRadius: '4px' }, 
+          '&::-webkit-scrollbar-thumb:hover': { backgroundColor: '#777' } 
+        }}>
+          {logs.map((log, index) => (
+            <ListItem key={index} sx={{ padding: '12px 16px', borderBottom: '1px solid #444', '&:last-child': { borderBottom: 'none' } }}>
+              <ListItemText
+                primary={log}
+                sx={{
+                  color: '#cccccc',
+                  fontSize: '0.875rem',
+                  fontWeight: '400',
+                  lineHeight: '1.4',
+                }}
+              />
+            </ListItem>
+          ))}
+        </List>
+      </DialogContent>
+      <DialogActions
+        sx={{
+          padding: '16px',
+          justifyContent: 'flex-end',
+          backgroundColor: '#1e1e1e',
+          borderTop: '1px solid #444',
+          borderRadius: '0 0 8px 8px',
+        }}
+      >
+        <Button
+          onClick={downloadLogs}
+          startIcon={<CloudDownload />}
+          sx={{
+            backgroundColor: '#388e3c',
+            color: 'white',
+            '&:hover': {
+              backgroundColor: '#2e7d32',
+            },
+            padding: '8px 16px',
+            fontWeight: '500',
+          }}
+        >
+          Download Logs
+        </Button>
+        <Button
+          onClick={() => setOpenLogsDialog(false)}
+          sx={{
+            color: '#64b5f6',
+            padding: '8px 16px',
+            fontWeight: '500',
+            '&:hover': {
+              backgroundColor: 'rgba(100, 181, 246, 0.08)',
+            },
+          }}
+        >
+          Close
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
   const [editMode, setEditMode] = useState(false);
   const [userName, setUserName] = useState(localStorage.getItem('userName') || 'User Name');
   const [userLogo, setUserLogo] = useState(localStorage.getItem('userLogo') || 'https://via.placeholder.com/100');
@@ -487,19 +660,19 @@ const PingUI = () => {
     setEditMode(false);
   };
 
-  useEffect(() => {
-    if (ips.length > 0) {
-      pingIps();
-      const interval = setInterval(pingIps, 20000);
-      return () => clearInterval(interval);
-    } else {
-      setActiveCount(0);
-      setInactiveCount(0);
-      setInactiveIps([]);
-      setPingResults({});
-      setOfflineTracking({});
-    }
-  }, [ips]);
+  // useEffect(() => {
+  //   if (ips.length > 0) {
+  //     pingIps();
+  //     const interval = setInterval(pingIps, 20000);
+  //     return () => clearInterval(interval);
+  //   } else {
+  //     setActiveCount(0);
+  //     setInactiveCount(0);
+  //     setInactiveIps([]);
+  //     setPingResults({});
+  //     setOfflineTracking({});
+  //   }
+  // }, [ips]);
 
   const handleFileUpload = (event) => {
     const file = event.target.files[0];
@@ -671,8 +844,15 @@ Aerial view
         </Menu>
 
         <Container maxWidth={false} sx={{ mt: 4, mb: 4, flexGrow: 1 }}>
-          <Grid container spacing={3}>
-            <Grid item xs={12}>
+          <Grid container spacing={2}>
+          <Grid container spacing={2}>
+        
+          <Grid item xs={12} sx={{ ml: 2 }}>
+          <Accordion>
+            <AccordionSummary expandIcon={<ExpandMore />}>
+              <Typography variant="h6">Add IP Address</Typography>
+            </AccordionSummary>
+            <AccordionDetails>
               <Paper elevation={0} sx={{ p: 3, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap', borderRadius: '16px' }}>
                 <TextField
                   label="Enter IP address"
@@ -720,7 +900,93 @@ Aerial view
                   </Button>
                 </label>
               </Paper>
-            </Grid>
+            </AccordionDetails>
+          </Accordion>
+        </Grid>
+
+        <Grid item xs={12} sx={{ ml: 2 }}>
+  <Card>
+    <CardContent sx={{ p: 1.5 }}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mt: 0.0 }}>
+        {/* Header Section */}
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+          <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
+            Network Activity Logs
+          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <Typography variant="body2" color="text.secondary" sx={{ mr: 0.5 }}>
+                {logsEnabled ? 'Logs Enabled' : 'Logs Disabled'}
+              </Typography>
+              <Switch
+                checked={logsEnabled}
+                onChange={(e) => setLogsEnabled(e.target.checked)}
+                color="primary"
+                sx={{ transform: 'scale(0.85)' }} // Smaller switch size
+              />
+            </Box>
+            <IconButton 
+              onClick={() => setOpenLogsDialog(true)} 
+              color="primary"
+              disabled={!logsEnabled}
+              sx={{ padding: 0.5 }} // Smaller icon button
+            >
+              <Visibility />
+            </IconButton>
+            <IconButton 
+              onClick={downloadLogs} 
+              color="primary"
+              disabled={!logsEnabled || logs.length === 0}
+              sx={{ padding: 0.5 }} // Smaller icon button
+            >
+              <CloudDownload />
+            </IconButton>
+            <IconButton 
+              onClick={clearLogs} 
+              color="primary"
+              disabled={!logsEnabled || logs.length === 0}
+              sx={{ padding: 0.5 }} // Smaller icon button
+            >
+              <Delete />
+            </IconButton>
+          </Box>
+        </Box>
+        
+        {/* Centered Total Log Entries */}
+        <Typography 
+  variant="body2" 
+  color="text.secondary" 
+  sx={{
+    fontSize: '0.895rem', // Keep the original size
+    fontWeight: '400', // Lighter font weight for a cleaner look
+    color: logsEnabled ? 'green' : 'red', // Dynamic color based on logsEnabled
+    textTransform: 'uppercase', // Make the text all uppercase for emphasis
+    letterSpacing: 1, // Slight letter spacing for a more refined look
+    borderLeft: '4px solid', // Subtle left border to add definition
+    borderColor: logsEnabled ? 'green' : 'red', // Border color also changes with logsEnabled
+    pl: 2, // Padding left to space out the text from the border
+    mt: -3.8, // Margin-top for spacing
+
+
+    transition: 'all 0.3s ease', // Smooth transition for hover effects
+    '&:hover': {
+      color: 'primary.main', // Hover color change for interactivity
+      borderColor: 'primary.main', // Border color change on hover
+    }
+  }}
+>
+  {logsEnabled 
+    ? `Total log entries: ${logs.length}`
+    : 'Enable logs to start tracking network status changes'}
+</Typography>
+
+      </Box>
+    </CardContent>
+    <LogsDialog />
+  </Card>
+</Grid>
+
+      </Grid>
             <Grid item xs={12} md={8}>
             <Card>
   <CardContent>
@@ -953,6 +1219,56 @@ Aerial view
           </Grid>
         </Container>
       </Box>
+      {/* <Grid item xs={12}>
+      <Card>
+        <CardContent>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
+              Network Activity Logs
+            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <Typography variant="body2" color="text.secondary" sx={{ mr: 1 }}>
+                  {logsEnabled ? 'Logs Enabled' : 'Logs Disabled'}
+                </Typography>
+                <Switch
+                  checked={logsEnabled}
+                  onChange={(e) => setLogsEnabled(e.target.checked)}
+                  color="primary"
+                />
+              </Box>
+              <IconButton 
+                onClick={() => setOpenLogsDialog(true)} 
+                color="primary"
+                disabled={!logsEnabled}
+              >
+                <Visibility />
+              </IconButton>
+              <IconButton 
+                onClick={downloadLogs} 
+                color="primary"
+                disabled={!logsEnabled || logs.length === 0}
+              >
+                <CloudDownload />
+              </IconButton>
+              <IconButton 
+                onClick={clearLogs} 
+                color="primary"
+                disabled={!logsEnabled || logs.length === 0}
+              >
+                <Delete />
+              </IconButton>
+            </Box>
+          </Box>
+          <Typography variant="body2" color="text.secondary">
+            {logsEnabled 
+              ? `Total log entries: ${logs.length}`
+              : 'Enable logs to start tracking network status changes'}
+          </Typography>
+        </CardContent>
+        <LogsDialog />
+      </Card>
+    </Grid> */}
 
       <Dialog open={openCategoryDialog} onClose={() => setOpenCategoryDialog(false)}>
         <DialogTitle>Manage Categories</DialogTitle>
