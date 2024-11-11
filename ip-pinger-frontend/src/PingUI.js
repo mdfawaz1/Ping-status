@@ -236,6 +236,12 @@ const PingUI = () => {
     showSnackbar('IP added successfully');
     setNewIp('');
   };
+  const clearStorage = () => {
+    // Clear specific items from localStorage
+    localStorage.removeItem('myAppIpData');
+    localStorage.removeItem('ips');
+    console.log('Storage cleared!');
+};
 
   const removeIp = (ipToRemove) => {
     const updatedIps = ips.filter((ip) => ip.address !== ipToRemove);
@@ -898,6 +904,15 @@ Aerial view
                   <Button variant="outlined" component="span" startIcon={<UploadFileIcon />} size="large">
                     Upload IPs
                   </Button>
+                  {/* <Button
+                variant="outlined"
+                component="span"
+                startIcon={<DeleteIcon />}  // Use DeleteIcon or any other icon
+                size="large"
+                onClick={clearStorage}      // Call clearStorage on click
+            >
+                Clear Storage
+            </Button> */}
                 </label>
               </Paper>
             </AccordionDetails>
@@ -1170,50 +1185,52 @@ Aerial view
                   </Card>
                 </Grid>
                 <Grid item xs={12}>
-                  <Card>
-                    <CardContent>
-                      <Typography variant="h5" sx={{ mb: 3, fontWeight: 'bold' }}>
-                        Category Statistics
-                      </Typography>
-                      {Object.entries(categoryStats).map(([category, stats]) => (
-                        <Box key={category} sx={{ mb: 3, last: { mb: 0 } }}>
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                            <Typography variant="subtitle1" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                              {iconMap[stats.icon]}
-                              {category}
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary">
-                              Total: {stats.total}
-                            </Typography>
-                          </Box>
-                          <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                            <LinearProgress
-                              variant="determinate"
-                              value={(stats.active / stats.total) * 100}
-                              sx={{
-                                flexGrow: 1,
-                                height: 8,
-                                borderRadius: 4,
-                                backgroundColor: 'error.light',
-                                '& .MuiLinearProgress-bar': {
-                                  backgroundColor: 'success.main',
-                                },
-                              }}
-                            />
-                          </Box>
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                            <Typography variant="body2" color="success.main">
-                              Active: {stats.active}
-                            </Typography>
-                            <Typography variant="body2" color="error.main">
-                              Inactive: {stats.inactive}
-                            </Typography>
-                          </Box>
-                        </Box>
-                      ))}
-                    </CardContent>
-                  </Card>
-                </Grid>
+      <Card sx={{ height: 385 }}>
+        <CardContent>
+          <Typography variant="h5" sx={{ mb: 2, fontWeight: 'bold' }}>
+            Category Statistics
+          </Typography>
+          <Box sx={{ height: 300, overflowY: 'auto' }}>
+            {Object.entries(categoryStats).map(([category, stats]) => (
+              <Box key={category} sx={{ mb: 3, '&:last-child': { mb: 0 } }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                  <Typography variant="subtitle1" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    {iconMap[stats.icon]}
+                    {category}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Total: {stats.total}
+                  </Typography>
+                </Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                  <LinearProgress
+                    variant="determinate"
+                    value={(stats.active / stats.total) * 100}
+                    sx={{
+                      flexGrow: 1,
+                      height: 8,
+                      borderRadius: 4,
+                      backgroundColor: 'error.light',
+                      '& .MuiLinearProgress-bar': {
+                        backgroundColor: 'success.main',
+                      },
+                    }}
+                  />
+                </Box>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <Typography variant="body2" color="success.main">
+                    Active: {stats.active}
+                  </Typography>
+                  <Typography variant="body2" color="error.main">
+                    Inactive: {stats.inactive}
+                  </Typography>
+                </Box>
+              </Box>
+            ))}
+          </Box>
+        </CardContent>
+      </Card>
+    </Grid>
               </Grid>
             </Grid>
           </Grid>
