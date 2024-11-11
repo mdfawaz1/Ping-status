@@ -59,7 +59,8 @@ import {
   Build as BuildIcon,
   Code as CodeIcon,
   BugReport as BugReportIcon,
-  CloudDownload,Visibility,Delete,ExpandMore 
+  CloudDownload, Visibility, Delete, ExpandMore,
+  MoreVert as MoreVertIcon // Added for ellipsis menu
 } from '@mui/icons-material';
 import { Link as RouterLink } from 'react-router-dom';
 import logo from './cable.png';
@@ -143,7 +144,7 @@ const availableIcons = [
   { label: 'Category', value: 'CategoryIcon' },
 ];
 
-const PingUI = () => {
+const PingUI = ({ initialFullScreen }) => {
   const defaultCategories = [
     { name: 'Production', icon: 'BuildIcon' },
     { name: 'Development', icon: 'CodeIcon' },
@@ -165,6 +166,9 @@ const PingUI = () => {
     return storedTracking ? JSON.parse(storedTracking) : {};
   });
 
+  // New states to track full-screen toggle
+  const [isCategoryStatsFullScreen, setCategoryStatsFullScreen] = useState(initialFullScreen === 'category');
+  const [isOverallStatusFullScreen, setOverallStatusFullScreen] = useState(initialFullScreen === 'overall-status');
   const [selectedIp, setSelectedIp] = useState('');
   const [newIp, setNewIp] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
@@ -713,6 +717,15 @@ useEffect(() => {
     return "#F44336";
   };
 
+  // Handler functions to toggle full-screen mode
+  const toggleCategoryStatsFullScreen = () => {
+    setCategoryStatsFullScreen(!isCategoryStatsFullScreen);
+  };
+
+  const toggleOverallStatusFullScreen = () => {
+    setOverallStatusFullScreen(!isOverallStatusFullScreen);
+  };
+
   return (
     <ThemeProvider theme={darkMode ? darkTheme : lightTheme}>
       <CssBaseline />
@@ -1154,68 +1167,129 @@ Aerial view
             <Grid item xs={12} md={4}>
               <Grid container spacing={3}>
                 <Grid item xs={12}>
-                  <Card>
-                    <CardContent>
-                      <Typography variant="h5" sx={{ mb: 2, fontWeight: 'bold' }}>
-                        Overall Status
-                      </Typography>
-                      <Grid container spacing={2}>
-                        <Grid item xs={6}>
-                          <Paper elevation={0} sx={{ p: 2, bgcolor: 'success.light', borderRadius: '12px' }}>
-                            <Typography color="success.contrastText" variant="h3" align="center">
-                              {activeCount}
-                            </Typography>
-                            <Typography color="success.contrastText" variant="h6" align="center">
-                              Active Devices
-                            </Typography>
-                          </Paper>
-                        </Grid>
-                        <Grid item xs={6}>
-                          <Paper elevation={0} sx={{ p: 2, bgcolor: 'error.light', borderRadius: '12px' }}>
-                            <Typography color="error.contrastText" variant="h3" align="center">
-                              {inactiveCount}
-                            </Typography>
-                            <Typography color="error.contrastText" variant="h6" align="center">
-                              Inactive Devices
-                            </Typography>
-                          </Paper>
-                        </Grid>
-                      </Grid>
-                    </CardContent>
+
+                  <Card sx={{
+                    position: 'relative',
+                    ...(isOverallStatusFullScreen ? {
+                      position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', zIndex: 9999, overflow: 'auto'
+                    } : {})
+                  }}>
+ <CardContent
+    sx={{
+      ...(isOverallStatusFullScreen ? {
+        '& .MuiTypography-h5': {
+          fontSize: '2rem', // Larger font size for title
+        },
+        '& .MuiPaper-root': {
+          padding: 4, // Increase padding for internal papers
+        },
+        '& .MuiTypography-body1': {
+          fontSize: '1.25rem', // Larger font size for body text
+          fontWeight: 'bold', // Make text bold
+        },
+      } : {}),
+    }}
+  >
+    <MoreVertIcon sx={{ position: 'absolute', right: 16, top: 16, cursor: 'pointer' }} onClick={toggleOverallStatusFullScreen} />
+    {/* Existing content goes here, such as Typography and Paper components */}
+    <Typography variant="h5" sx={{ mb: 2, fontWeight: 'bold' }}>
+      Overall Status
+    </Typography>
+    <Grid container spacing={2}>
+      <Grid item xs={6}>
+        <Paper elevation={0} sx={{ p: 2, bgcolor: 'success.light', borderRadius: '12px' }}>
+          <Typography color="success.contrastText" variant="h3" align="center">
+            {activeCount}
+          </Typography>
+          <Typography color="success.contrastText" variant="h6" align="center">
+            Active Devices
+          </Typography>
+        </Paper>
+      </Grid>
+      <Grid item xs={6}>
+        <Paper elevation={0} sx={{ p: 2, bgcolor: 'error.light', borderRadius: '12px' }}>
+          <Typography color="error.contrastText" variant="h3" align="center">
+            {inactiveCount}
+          </Typography>
+          <Typography color="error.contrastText" variant="h6" align="center">
+            Inactive Devices
+          </Typography>
+        </Paper>
+      </Grid>
+    </Grid>
+  </CardContent>
                   </Card>
                 </Grid>
                 <Grid item xs={12}>
-      <Card sx={{ height: 385 }}>
-        <CardContent>
-          <Typography variant="h5" sx={{ mb: 2, fontWeight: 'bold' }}>
-            Category Statistics
-          </Typography>
-          <Box sx={{ height: 300, overflowY: 'auto' }}>
-            {Object.entries(categoryStats).map(([category, stats]) => (
-              <Box key={category} sx={{ mb: 3, '&:last-child': { mb: 0 } }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                  <Typography variant="subtitle1" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    {iconMap[stats.icon]}
-                    {category}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Total: {stats.total}
-                  </Typography>
-                </Box>
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                  <LinearProgress
-                    variant="determinate"
-                    value={(stats.active / stats.total) * 100}
-                    sx={{
-                      flexGrow: 1,
-                      height: 8,
-                      borderRadius: 4,
-                      backgroundColor: 'error.light',
-                      '& .MuiLinearProgress-bar': {
-                        backgroundColor: 'success.main',
-                      },
-                    }}
-                  />
+                  <Card sx={{
+                    position: 'relative',
+                    ...(isCategoryStatsFullScreen ? {
+                      position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', zIndex: 9999, overflow: 'auto'
+                    } : {})
+                  }}>
+  <CardContent
+    sx={{
+      ...(isCategoryStatsFullScreen ? {
+        '& .MuiTypography-h5': {
+          fontSize: '2.5rem', // Larger title size
+        },
+        '& .MuiTypography-subtitle1': {
+          fontSize: '1.75rem', // Increase subtitle size
+          fontWeight: 'bold',
+        },
+        '& .MuiTypography-body2': {
+          fontSize: '1.25rem', // Increase body text size
+        },
+        '& .MuiLinearProgress-root': {
+          height: 12, // Thicker progress bar
+        },
+        padding: '32px', // Larger padding in full-screen
+      } : {}),
+    }}
+  >
+    <MoreVertIcon 
+      sx={{ 
+        position: 'absolute', 
+        right: 32, // Increase padding relative to icon for larger cards
+        top: 32, 
+        cursor: 'pointer',
+        ...(isCategoryStatsFullScreen ? { fontSize: '2rem' } : {}), // Larger icon in full-screen
+      }} 
+      onClick={toggleCategoryStatsFullScreen} 
+    />
+    <Typography variant="h5" sx={{ mb: 2, fontWeight: 'bold' }}>
+      Category Statistics
+    </Typography>
+    <Box sx={{
+
+height: isCategoryStatsFullScreen ? 500 : 300, // Adjust height conditionally
+overflowY: 'auto',
+}}>
+      {Object.entries(categoryStats).map(([category, stats]) => (
+        <Box key={category} sx={{ mb: 3, '&:last-child': { mb: 0 } }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+            <Typography variant="subtitle1" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              {iconMap[stats.icon]}
+              {category}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Total: {stats.total}
+            </Typography>
+          </Box>
+          <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+            <LinearProgress
+              variant="determinate"
+              value={(stats.active / stats.total) * 100}
+              sx={{
+                flexGrow: 1,
+                height: isCategoryStatsFullScreen ? 12 : 8, // Thicker progress bar in full-screen
+                borderRadius: 4,
+                backgroundColor: 'error.light',
+                '& .MuiLinearProgress-bar': {
+                  backgroundColor: 'success.main',
+                },
+              }}
+            />
                 </Box>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                   <Typography variant="body2" color="success.main">
@@ -1236,57 +1310,6 @@ Aerial view
           </Grid>
         </Container>
       </Box>
-      {/* <Grid item xs={12}>
-      <Card>
-        <CardContent>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-            <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
-              Network Activity Logs
-            </Typography>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                <Typography variant="body2" color="text.secondary" sx={{ mr: 1 }}>
-                  {logsEnabled ? 'Logs Enabled' : 'Logs Disabled'}
-                </Typography>
-                <Switch
-                  checked={logsEnabled}
-                  onChange={(e) => setLogsEnabled(e.target.checked)}
-                  color="primary"
-                />
-              </Box>
-              <IconButton 
-                onClick={() => setOpenLogsDialog(true)} 
-                color="primary"
-                disabled={!logsEnabled}
-              >
-                <Visibility />
-              </IconButton>
-              <IconButton 
-                onClick={downloadLogs} 
-                color="primary"
-                disabled={!logsEnabled || logs.length === 0}
-              >
-                <CloudDownload />
-              </IconButton>
-              <IconButton 
-                onClick={clearLogs} 
-                color="primary"
-                disabled={!logsEnabled || logs.length === 0}
-              >
-                <Delete />
-              </IconButton>
-            </Box>
-          </Box>
-          <Typography variant="body2" color="text.secondary">
-            {logsEnabled 
-              ? `Total log entries: ${logs.length}`
-              : 'Enable logs to start tracking network status changes'}
-          </Typography>
-        </CardContent>
-        <LogsDialog />
-      </Card>
-    </Grid> */}
-
       <Dialog open={openCategoryDialog} onClose={() => setOpenCategoryDialog(false)}>
         <DialogTitle>Manage Categories</DialogTitle>
         <DialogContent>

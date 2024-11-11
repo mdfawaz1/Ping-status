@@ -17,6 +17,14 @@ const App = () => {
   );
 };
 
+const FullScreenCategory = () => {
+  return <PingUI initialFullScreen="category" />;
+};
+
+const FullScreenOverallStatus = () => {
+  return <PingUI initialFullScreen="overall-status" />;
+};
+
 const MainRoutes = () => {
   const { isLoggedIn, setIsLoggedIn } = useAuth(); // Get login state and setter from AuthContext
 
@@ -36,6 +44,11 @@ const MainRoutes = () => {
 
   return (
     <Routes>
+      {/* Unprotected routes */}
+      <Route path="/category" element={<FullScreenCategory />} /> {/* Accessible without login */}
+      <Route path="/overall-status" element={<FullScreenOverallStatus />} /> {/* Accessible without login */}
+
+      {/* Protected routes */}
       {isLoggedIn ? (
         <>
           <Route path="/home" element={<PingUI />} />
