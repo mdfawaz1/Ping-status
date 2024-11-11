@@ -1247,16 +1247,7 @@ Aerial view
       } : {}),
     }}
   >
-    <MoreVertIcon 
-      sx={{ 
-        position: 'absolute', 
-        right: 32, // Increase padding relative to icon for larger cards
-        top: 32, 
-        cursor: 'pointer',
-        ...(isCategoryStatsFullScreen ? { fontSize: '2rem' } : {}), // Larger icon in full-screen
-      }} 
-      onClick={toggleCategoryStatsFullScreen} 
-    />
+<MoreVertIcon sx={{ position: 'absolute', right: 16, top: 16, cursor: 'pointer' }} onClick={toggleCategoryStatsFullScreen} />
     <Typography variant="h5" sx={{ mb: 2, fontWeight: 'bold' }}>
       Category Statistics
     </Typography>

@@ -45,8 +45,8 @@ const MainRoutes = () => {
   return (
     <Routes>
       {/* Unprotected routes */}
-      <Route path="/category" element={<FullScreenCategory />} /> {/* Accessible without login */}
-      <Route path="/overall-status" element={<FullScreenOverallStatus />} /> {/* Accessible without login */}
+      <Route path="/v1/protected/category" element={<FullScreenCategory />} /> {/* Accessible without login */}
+      <Route path="/v1/protected/overall-status" element={<FullScreenOverallStatus />} /> {/* Accessible without login */}
 
       {/* Protected routes */}
       {isLoggedIn ? (
